@@ -1,0 +1,196 @@
+{
+  "name": "模板_2026-05-12-2",
+  "sheets": [
+    {
+      "name": "退网报告填写字段",
+      "data": [
+        [
+          "小区名称",
+          "方案制定人"
+        ],
+        [
+          "CommunityName",
+          "PlanMaker"
+        ],
+        [
+          "古城区茨满村四组2号一体化RRU-LHWQ-004",
+          "马劲文"
+        ],
+        [
+          "方案制定时间",
+          "方案审核人"
+        ],
+        [
+          "PlanMakeTime",
+          "PlanAuditor"
+        ],
+        [
+          "2026/5/5",
+          "张志祥"
+        ],
+        [
+          "基站照片",
+          ""
+        ],
+        [
+          "jizhanzhaopian",
+          ""
+        ]
+      ],
+      "fields": [
+        {
+          "name": "小区名称",
+          "dataName": "CommunityName",
+          "column": 0,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "方案制定人",
+          "dataName": "PlanMaker",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "方案制定时间",
+          "dataName": "PlanMakeTime",
+          "column": 0,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "方案审核人",
+          "dataName": "PlanAuditor",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "基站照片",
+          "dataName": "jizhanzhaopian",
+          "column": 0,
+          "type": "image",
+          "replaceable": true,
+          "defaultValue": ""
+        }
+      ]
+    },
+    {
+      "name": "_字段配置",
+      "data": [
+        [
+          "字段配置信息",
+          "请勿修改此sheet",
+          "",
+          "",
+          ""
+        ],
+        [
+          "显示名称",
+          "数据字段名",
+          "字段类型",
+          "可替换",
+          "默认值"
+        ],
+        [
+          "小区名称",
+          "CommunityName",
+          "text",
+          "是",
+          ""
+        ],
+        [
+          "方案制定人",
+          "PlanMaker",
+          "text",
+          "是",
+          ""
+        ],
+        [
+          "方案制定时间",
+          "PlanMakeTime",
+          "text",
+          "是",
+          ""
+        ],
+        [
+          "方案审核人",
+          "PlanAuditor",
+          "text",
+          "是",
+          ""
+        ],
+        [
+          "基站照片",
+          "jizhanzhaopian",
+          "image",
+          "是",
+          ""
+        ]
+      ],
+      "fields": [
+        {
+          "name": "数据字段名",
+          "dataName": "CommunityName",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "字段类型",
+          "dataName": "text",
+          "column": 2,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "CommunityName",
+          "dataName": "PlanMaker",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "PlanMaker",
+          "dataName": "PlanMakeTime",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "PlanMakeTime",
+          "dataName": "PlanAuditor",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "PlanAuditor",
+          "dataName": "jizhanzhaopian",
+          "column": 1,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        },
+        {
+          "name": "text",
+          "dataName": "image",
+          "column": 2,
+          "type": "text",
+          "replaceable": true,
+          "defaultValue": ""
+        }
+      ]
+    }
+  ]
+}

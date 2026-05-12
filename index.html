@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel批量生成工具 v2.0</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 1600px; margin: 0 auto; }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .header p { font-size: 1.1rem; opacity: 0.9; }
+    .version-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+
+    .steps-progress {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      padding: 12px 24px;
+      border-radius: 30px;
+      transition: all 0.3s ease;
+    }
+    .step-item.active {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+    .step-item.completed {
+      background: #48bb78;
+    }
+    .step-item.disabled {
+      opacity: 0.5;
+    }
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .step-item.completed .step-number {
+      background: white;
+      color: #48bb78;
+    }
+    .step-text { font-size: 0.95rem; font-weight: 500; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    .card.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title .icon { font-size: 1.5rem; }
+    .card-title .badge {
+      background: #48bb78;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+    .card-title .badge.warning { background: #f6ad55; }
+    .card-title .badge.error { background: #fc8181; }
+
+    .server-panel {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .server-running { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 15px; border-radius: 8px; }
+    .server-info { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .server-status { width: 12px; height: 12px; background: #48bb78; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(72, 187, 120, 0); } 100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); } }
+    .server-url { flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 6px; font-family: monospace; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; }
+    .port-config { display: flex; align-items: center; gap: 10px; }
+    .port-input { width: 80px; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; text-align: center; }
+    .port-input::placeholder { color: rgba(255,255,255,0.7); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; border: none; text-decoration: none; }
+    .btn-sm { padding: 8px 16px; font-size: 0.9rem; }
+    .btn-xs { padding: 4px 8px; font-size: 0.8rem; }
+    .btn-success { background: #48bb78; color: white; }
+    .btn-success:hover { background: #38a169; transform: translateY(-2px); }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; }
+    .btn-secondary:hover { background: #cbd5e0; }
+    .btn-danger { background: #fc8181; color: white; }
+    .btn-danger:hover { background: #f56565; }
+    .btn-warning { background: #f6ad55; color: white; }
+    .btn-warning:hover { background: #ed8936; }
+    .btn-info { background: #4299e1; color: white; }
+    .btn-info:hover { background: #3182ce; transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    .upload-area { border: 2px dashed #cbd5e0; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f7fafc; }
+    .upload-area:hover { border-color: #667eea; background: #edf2f7; }
+    .upload-area.dragover { border-color: #667eea; background: #eef2ff; }
+    .upload-icon { font-size: 48px; color: #a0aec0; margin-bottom: 16px; }
+    .upload-text { font-size: 1.1rem; color: #4a5568; margin-bottom: 8px; }
+    .upload-hint { font-size: 0.9rem; color: #718096; }
+
+    .fields-list { max-height: 300px; overflow-y: auto; }
+    .field-item { display: flex; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s ease; }
+    .field-item:hover { border-color: #667eea; background: #f7fafc; }
+    .field-item.editable:hover { cursor: pointer; }
+    .field-item.fixed { background: #f7fafc; opacity: 0.7; }
+    .field-name { flex: 1; font-weight: 500; color: #2d3748; }
+    .field-type { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; }
+    .field-type.text { background: #ebf8ff; color: #3182ce; }
+    .field-type.number { background: #f0fff4; color: #38a169; }
+    .field-type.date { background: #fffaf0; color: #dd6b20; }
+    .field-type.image { background: #faf5ff; color: #805ad5; }
+    .field-type-select { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 2px solid #e2e8f0; cursor: pointer; outline: none; }
+    .field-type-select:hover { border-color: #667eea; }
+    .field-type-select:focus { border-color: #667eea; }
+    .btn-success { background: linear-gradient(135deg, #48bb78, #38a169); color: white; border: none; }
+    .btn-success:hover { background: linear-gradient(135deg, #38a169, #2f855a); }
+    .field-actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s; }
+    .field-item:hover .field-actions { opacity: 1; }
+    .field-toggle { width: 40px; height: 22px; border-radius: 11px; background: #e2e8f0; position: relative; cursor: pointer; }
+    .field-toggle.active { background: #48bb78; }
+    .field-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: left 0.2s; }
+    .field-toggle.active::after { left: 20px; }
+
+    .preview-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    .preview-table th, .preview-table td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    .preview-table th { background: #f7fafc; font-weight: 600; }
+    .preview-table tr:nth-child(even) { background: #fafafa; }
+
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; margin-top: 16px; }
+    .folder-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: white; transition: all 0.2s ease; }
+    .folder-card:hover { border-color: #667eea; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .folder-card.matched { border-color: #48bb78; background: #f0fff4; }
+    .folder-card.unmatched { border-color: #fc8181; background: #fff5f5; }
+    .folder-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .folder-name { font-weight: 600; color: #2d3748; font-size: 1.1rem; }
+    .folder-badge { background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .folder-badge.matched { background: #48bb78; }
+    .folder-badge.unmatched { background: #f6ad55; }
+    .folder-files { display: flex; flex-wrap: wrap; gap: 8px; max-height: 60px; overflow-y: auto; }
+    .folder-file { background: #f7fafc; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; color: #4a5568; }
+    .folder-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    .config-section { margin-bottom: 16px; }
+    .config-label { display: block; font-size: 0.95rem; font-weight: 500; color: #4a5568; margin-bottom: 8px; }
+    .config-input { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
+    .config-input:focus { outline: none; border-color: #667eea; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+    .compression-settings { background: #f7fafc; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .compression-settings h4 { margin-bottom: 12px; color: #4a5568; }
+    .slider-container { margin-bottom: 12px; }
+    .slider-label { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem; color: #4a5568; }
+    .slider { width: 100%; height: 8px; border-radius: 4px; background: #e2e8f0; appearance: none; cursor: pointer; }
+    .slider::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #667eea; cursor: pointer; }
+    .checkbox-item { display: flex; align-items: center; padding: 8px 0; }
+    .checkbox-item input[type="checkbox"] { margin-right: 8px; width: 18px; height: 18px; }
+
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 1.25rem; font-weight: 600; color: #2d3748; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #718096; }
+    .modal-close:hover { color: #2d3748; }
+
+    .toast { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1001; animation: slideIn 0.3s ease; }
+    .toast.success { background: #48bb78; color: white; }
+    .toast.error { background: #fc8181; color: white; }
+    .toast.warning { background: #f6ad55; color: white; }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+    .auto-match-hint { background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .auto-match-hint.warning { background: #fffaf0; border-color: #fbd38d; }
+    .auto-match-hint.error { background: #fff5f5; border-color: #feb2b2; }
+
+    .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 16px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease; }
+
+    .hidden { display: none; }
+    .instruction { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .instruction h4 { margin-bottom: 8px; font-size: 1rem; }
+    .instruction ol { padding-left: 20px; font-size: 0.9rem; line-height: 1.8; }
+
+    .sheet-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .sheet-tab { padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s; }
+    .sheet-tab.active { background: #667eea; color: white; border-color: #667eea; }
+    .sheet-tab:hover { border-color: #667eea; }
+
+    .template-list { max-height: 400px; overflow-y: auto; }
+    .template-item { display: flex; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; }
+    .template-icon { font-size: 1.5rem; margin-right: 12px; }
+    .template-info { flex: 1; }
+    .template-name { font-weight: 600; color: #2d3748; }
+    .template-meta { font-size: 0.85rem; color: #718096; }
+    .template-actions { display: flex; gap: 8px; }
+
+    .field-edit-modal .form-group { margin-bottom: 16px; }
+    .field-edit-modal label { display: block; font-size: 0.9rem; color: #4a5568; margin-bottom: 4px; }
+    .field-edit-modal select, .field-edit-modal input { width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; }
+
+    .validation-stat { background: #f7fafc; padding: 8px 12px; border-radius: 6px; margin-right: 12px; margin-bottom: 8px; display: inline-block; }
+    .validation-stat.warning { background: #fffaf0; }
+    .validation-stat.error { background: #fff5f5; }
+
+    @media (max-width: 768px) {
+      .two-col, .three-col { grid-template-columns: 1fr; }
+      .steps-progress { flex-direction: column; align-items: flex-start; }
+      .step-item { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Excel批量生成工具</h1>
+      <p>智能模板生成 · 批量导出 · 图片自动匹配</p>
+      <div class="version-badge">✨ v2.0 新增：步骤导航 · 模板编辑 · 智能匹配</div>
+    </div>
+
+    <div class="steps-progress" id="steps-progress">
+      <div class="step-item" id="step-1">
+        <span class="step-number">1</span>
+        <span class="step-text">制作模板</span>
+      </div>
+      <div class="step-item" id="step-2">
+        <span class="step-number">2</span>
+        <span class="step-text">导入模板</span>
+      </div>
+      <div class="step-item" id="step-3">
+        <span class="step-number">3</span>
+        <span class="step-text">导入数据</span>
+      </div>
+      <div class="step-item" id="step-4">
+        <span class="step-number">4</span>
+        <span class="step-text">上传图片</span>
+      </div>
+      <div class="step-item" id="step-5">
+        <span class="step-number">5</span>
+        <span class="step-text">配置输出</span>
+      </div>
+      <div class="step-item" id="step-6">
+        <span class="step-number">6</span>
+        <span class="step-text">批量生成</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="icon">🖥️</span> 服务器控制</span>
+        <span class="badge">v2.0</span>
+      </div>
+      
+      <div id="server-panel">
+        <div id="server-not-running">
+          <div class="port-config">
+            <label style="color: #4a5568; font-weight: 500;">端口号：</label>
+            <input type="number" class="port-input" id="server-port" value="3000" min="1024" max="65535">
+            <span style="color: #718096;">（建议使用3000-9000之间的端口）</span>
+          </div>
+          <div style="margin-top: 16px;">
+            <button class="btn btn-success" onclick="startServer()">🚀 启动服务器</button>
+            <button class="btn btn-secondary" onclick="openInBrowser()" style="margin-left: 10px;">🌐 在浏览器中打开</button>
+          </div>
+          <div class="instruction">
+            <h4>💡 使用说明</h4>
+            <ol>
+              <li>点击"启动服务器"按钮启动本地服务</li>
+              <li>启动后会自动打开浏览器窗口</li>
+              <li>如果需要从其他电脑访问，使用显示的IP地址访问</li>
+              <li>关闭命令窗口或点击"停止服务器"即可停止服务</li>
+            </ol>
+          </div>
+        </div>
+        
+        <div id="server-running" class="hidden">
+          <div class="server-info">
+            <div class="server-status"></div>
+            <span style="font-weight: 600;">服务器运行中</span>
+            <span id="stats-info" style="margin-left: 20px; opacity: 0.9; font-size: 0.9rem;"></span>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label style="color: white;">访问地址：</label>
+            <input type="text" class="server-url" id="server-url" readonly>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="openInBrowser()">🌐 打开工具</button>
+            <button class="btn btn-danger" onclick="stopServer()">⏹️ 停止服务器</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-template-make">
+      <div class="card-title">
+        <span><span class="icon">📄</span>步骤1：制作模板（可选）</span>
+        <span class="badge" id="template-make-badge">未开始</span>
+      </div>
+      
+      <div class="upload-area" id="template-upload" onclick="document.getElementById('template-file').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleTemplateDrop(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">点击或拖拽上传示例Excel表格</div>
+        <div class="upload-hint">支持 .xlsx, .xls 格式</div>
+      </div>
+      <input type="file" id="template-file" accept=".xlsx,.xls" class="hidden" onchange="handleTemplateSelect(event)">
+      
+      <div style="margin-top: 12px; padding: 12px; background: #fffaf0; border-radius: 8px; border-left: 4px solid #ed8936;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <strong style="color: #c05621;">💡 手动创建模板</strong>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #744210;">没有示例表格？点击按钮从零开始创建模板</p>
+          </div>
+          <button class="btn btn-warning btn-sm" onclick="showManualTemplateCreator()">➕ 手动创建模板</button>
+        </div>
+      </div>
+      
+      <div id="template-preview" class="hidden" style="margin-top: 16px;">
+        <div class="sheet-tabs" id="sheet-tabs"></div>
+        <div id="sheet-content"></div>
+        
+        <div style="margin-top: 16px; padding: 16px; background: #f7fafc; border-radius: 8px;">
+          <h4 style="margin-bottom: 12px; color: #4a5568;">📝 字段列表（点击字段可编辑）</h4>
+          <div class="fields-list" id="fields-list"></div>
+        </div>
+        
+        <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-success btn-sm" onclick="saveCurrentTemplate()">💾 保存模板</button>
+          <button class="btn btn-info btn-sm" onclick="downloadCurrentTemplate()">📥 下载Excel模板</button>
+          <button class="btn btn-secondary btn-sm" onclick="showTemplateManager()">📂 管理模板</button>
+          <button class="btn btn-primary btn-sm" onclick="enableStep2()">➡️ 下一步：导入模板</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-template-import">
+      <div class="card-title">
+        <span><span class="icon">📥</span>步骤2：导入模板</span>
+        <span class="badge" id="template-import-badge">未导入</span>
+      </div>
+      
+      <div style="margin-bottom: 12px; padding: 12px; background: #e6fffa; border-radius: 8px; border-left: 4px solid #38b2ac;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <strong style="color: #234e52;">💡 说明</strong>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #285e61;">导入最终要使用的模板表格，模板中应包含数据字段名（如 CommunityName）</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="upload-area" id="final-template-upload" onclick="document.getElementById('final-template-file').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleFinalTemplateDrop(event)">
+        <div class="upload-icon">📥</div>
+        <div class="upload-text">点击或拖拽上传最终模板表格</div>
+        <div class="upload-hint">支持 .xlsx, .xls 格式</div>
+      </div>
+      <input type="file" id="final-template-file" accept=".xlsx,.xls" class="hidden" onchange="handleFinalTemplateSelect(event)">
+      
+      <div id="final-template-preview" class="hidden" style="margin-top: 16px;">
+        <div class="sheet-tabs" id="final-sheet-tabs"></div>
+        <div id="final-sheet-content"></div>
+        
+        <div style="margin-top: 16px; padding: 16px; background: #f7fafc; border-radius: 8px;">
+          <h4 style="margin-bottom: 12px; color: #4a5568;">📝 字段列表（可修改类型）</h4>
+          <p style="font-size: 0.85rem; color: #718096; margin-bottom: 12px;">
+            💡 提示：在下拉框中修改字段类型（如"基站照片"设为"图片"），修改后点击"保存模板修改"
+          </p>
+          <div class="fields-list" id="final-fields-list"></div>
+        </div>
+        
+        <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-success btn-sm" onclick="saveFinalTemplateChanges()">💾 保存模板修改</button>
+          <button class="btn btn-info btn-sm" onclick="downloadFinalTemplate()">📥 下载当前模板</button>
+          <button class="btn btn-secondary btn-sm" onclick="showTemplateManager()">📂 管理模板</button>
+          <button class="btn btn-info btn-sm" onclick="validateCurrentData()">✅ 数据验证</button>
+          <button class="btn btn-primary btn-sm" onclick="enableStep3()">➡️ 下一步：导入数据</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-data">
+      <div class="card-title">
+        <span><span class="icon">📊</span>步骤3：导入数据文件</span>
+        <span class="badge" id="data-badge">未导入</span>
+      </div>
+      
+      <div class="upload-area" id="data-upload" onclick="document.getElementById('data-file').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDataDrop(event)">
+        <div class="upload-icon">📊</div>
+        <div class="upload-text">点击或拖拽上传数据文件</div>
+        <div class="upload-hint">支持 .xlsx, .xls, .csv 格式</div>
+      </div>
+      <input type="file" id="data-file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleDataSelect(event)">
+      
+      <div id="data-preview" class="hidden" style="margin-top: 16px;">
+        <div class="preview-table" id="data-table"></div>
+        <div id="validation-result" class="hidden"></div>
+      </div>
+    </div>
+
+    <div class="card" id="card-images">
+      <div class="card-title">
+        <span><span class="icon">🖼️</span>步骤4：图片文件夹管理</span>
+        <span class="badge" id="images-badge">未上传</span>
+      </div>
+      
+      <div class="two-col" style="gap: 20px;">
+        <div>
+          <div class="upload-area zip-upload-area" id="zip-upload" onclick="document.getElementById('zip-file').click()" style="padding: 30px;">
+            <div class="upload-icon">📦</div>
+            <div class="upload-text">点击上传包含多个文件夹的ZIP文件</div>
+            <div class="upload-hint">支持.zip格式，每个文件夹对应一条数据记录<br>文件夹内包含该记录的所有图片</div>
+          </div>
+          <input type="file" id="zip-file" accept=".zip" class="hidden" onchange="handleZipUpload(event)">
+          
+          <div style="margin-top: 12px;">
+            <div class="upload-area" id="image-upload" onclick="document.getElementById('image-files').click()" style="padding: 20px;">
+              <div class="upload-icon" style="font-size: 32px;">🖼️</div>
+              <div class="upload-text">上传单独的图片文件</div>
+              <div class="upload-hint">支持 .jpg, .png, .gif, .bmp 格式</div>
+            </div>
+            <input type="file" id="image-files" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
+          </div>
+        </div>
+        
+        <div>
+          <div class="compression-settings">
+            <h4>🗜️ 图片压缩设置</h4>
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>图片质量</span>
+                <span id="quality-value">80%</span>
+              </div>
+              <input type="range" class="slider" id="compression-quality" min="10" max="100" value="80" oninput="updateCompressionSettings()">
+            </div>
+            <div class="two-col" style="gap: 12px;">
+              <div>
+                <label style="font-size: 0.9rem; color: #4a5568;">最大宽度 (px)</label>
+                <input type="number" class="config-input" id="max-width" value="800" min="100" max="2000">
+              </div>
+              <div>
+                <label style="font-size: 0.9rem; color: #4a5568;">最大高度 (px)</label>
+                <input type="number" class="config-input" id="max-height" value="600" min="100" max="2000">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="folder-list" class="folder-grid"></div>
+      
+      <div id="auto-match-info" class="auto-match-hint hidden">
+        <strong>💡 智能匹配提示</strong>
+        <div id="auto-match-content"></div>
+      </div>
+      
+      <div class="config-section" style="margin-top: 16px;">
+        <label class="config-label">图片字段映射（将数据字段映射到图片文件夹）</label>
+        <div id="image-mapping-list"><div style="color: #718096; font-size: 0.9rem;">请先导入模板和数据，系统会自动识别图片字段并显示匹配状态</div></div>
+      </div>
+      
+      <div style="margin-top: 12px; display: flex; gap: 10px;">
+        <button class="btn btn-sm btn-warning" onclick="refreshFolderList()">🔄 刷新文件夹列表</button>
+        <button class="btn btn-sm btn-danger" onclick="clearAllImages()">🗑️ 清空所有图片</button>
+      </div>
+    </div>
+
+    <div class="card" id="card-config">
+      <div class="card-title">
+        <span><span class="icon">⚙️</span>步骤5：配置输出</span>
+      </div>
+      
+      <div class="two-col">
+        <div>
+          <div class="config-section">
+            <label class="config-label">输出文件名前缀</label>
+            <input type="text" class="config-input" id="output-prefix" placeholder="例如：报表_" value="报表_">
+          </div>
+          
+          <div class="config-section">
+            <label class="config-label">文件名使用的字段（从数据中选择）</label>
+            <select class="config-input" id="filename-field"><option value="">请先上传数据文件</option></select>
+          </div>
+
+          <div class="zip-options">
+            <h4 style="margin-bottom: 12px; color: #4a5568;">📦 下载选项</h4>
+            <div class="checkbox-item">
+              <input type="checkbox" id="download-zip" checked>
+              <label for="download-zip">打包为ZIP文件下载（推荐）</label>
+            </div>
+            <div class="checkbox-item">
+              <input type="checkbox" id="separate-download">
+              <label for="separate-download">分别下载每个文件</label>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <div class="config-section">
+            <label class="config-label">图片尺寸设置</label>
+            <div style="display: flex; gap: 10px;">
+              <div style="flex: 1;">
+                <label style="font-size: 0.9rem; color: #718096;">宽度(px)</label>
+                <input type="number" class="config-input" id="image-width" value="100">
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 0.9rem; color: #718096;">高度(px)</label>
+                <input type="number" class="config-input" id="image-height" value="50">
+              </div>
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label class="config-label">图片插入位置</label>
+            <div style="display: flex; gap: 10px;">
+              <div style="flex: 1;">
+                <label style="font-size: 0.9rem; color: #718096;">列号(从1开始)</label>
+                <input type="number" class="config-input" id="image-col" value="1" min="1">
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 0.9rem; color: #718096;">行号(从1开始)</label>
+                <input type="number" class="config-input" id="image-row" value="1" min="1">
+              </div>
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label class="config-label">文件夹内图片匹配规则</label>
+            <select class="config-input" id="image-match-rule">
+              <option value="first">使用文件夹内第一张图片</option>
+              <option value="exact">精确匹配文件名（如：logo.png）</option>
+              <option value="contains">包含关键字（如：包含"logo"）</option>
+            </select>
+          </div>
+          
+          <div class="config-section">
+            <label class="config-label">变量名行（在最终输出中删除这些行）</label>
+            <div style="margin-bottom: 8px;">
+              <input type="text" id="exclude-rows" class="config-input" placeholder="例如：2,5,8（用逗号分隔行号，从1开始）" value="2,5,8">
+            </div>
+            <div style="font-size: 0.8rem; color: #718096;">
+              提示：这些行包含变量名（如 CommunityName），在最终输出中会被删除
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-generate">
+      <div class="card-title">
+        <span><span class="icon">🚀</span>步骤6：批量生成</span>
+      </div>
+      
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+        <button class="btn btn-info" onclick="previewFirstRecord()">👁️ 预览第一条数据</button>
+        <button class="btn btn-primary" id="generate-btn" onclick="generateExcelFiles()">🚀 开始批量生成</button>
+        <button class="btn btn-secondary" onclick="downloadTemplate()">📥 下载模板配置</button>
+        <button class="btn btn-secondary" onclick="downloadSampleData()">📥 下载示例数据</button>
+      </div>
+      
+      <!-- 预览区域 -->
+      <div id="preview-area" class="hidden" style="margin-top: 16px; padding: 16px; background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px;">
+        <h4 style="margin-bottom: 12px; color: #22543d;">📋 预览：第一条数据生成结果</h4>
+        <div id="preview-content"></div>
+      </div>
+      
+      <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div>
+      <div id="status-message"></div>
+    </div>
+  </div>
+
+  <div id="template-modal" class="modal hidden" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">📂 模板管理</h3>
+        <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+      </div>
+      <div id="template-list" class="template-list"></div>
+    </div>
+  </div>
+
+  <div id="field-edit-modal" class="modal hidden" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ 编辑字段</h3>
+        <button class="modal-close" onclick="closeFieldEditModal()">&times;</button>
+      </div>
+      <div class="field-edit-modal">
+        <div class="form-group">
+          <label>字段名称（显示名称）</label>
+          <input type="text" id="edit-field-name" placeholder="输入字段显示名称">
+        </div>
+        <div class="form-group">
+          <label>数据字段名（英文标识，用于匹配数据列）</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="edit-field-data-name" placeholder="输入数据字段名">
+            <button class="btn btn-sm btn-secondary" onclick="generateEnglishName()">🔤 自动生成</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>字段类型</label>
+          <select id="edit-field-type">
+            <option value="text">文本</option>
+            <option value="number">数字</option>
+            <option value="date">日期</option>
+            <option value="image">图片</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>是否可替换</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span>否（固定文本）</span>
+            <div class="field-toggle" id="edit-field-replaceable" onclick="toggleReplaceable()"></div>
+            <span>是（从数据中填充）</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>默认值（当数据为空时使用）</label>
+          <input type="text" id="edit-field-default" placeholder="留空则不填充">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeFieldEditModal()">取消</button>
+          <button class="btn btn-success" onclick="saveFieldEdit()">保存更改</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="manual-template-modal" class="modal hidden" style="display: none;">
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow: auto;">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ 手动创建模板</h3>
+        <button class="modal-close" onclick="closeManualTemplateCreator()">&times;</button>
+      </div>
+      <div style="padding: 16px;">
+        <div style="margin-bottom: 20px; padding: 12px; background: #ebf8ff; border-radius: 8px; border-left: 4px solid #4299e1;">
+          <strong style="color: #2b6cb0;">📋 模板格式说明</strong>
+          <ul style="margin: 8px 0 0 0; font-size: 0.85rem; color: #2c5282; line-height: 1.6;">
+            <li><strong>第1行</strong>：表头（字段名称，如"公司名称"、"注册资本"）</li>
+            <li><strong>第2行及之后</strong>：示例数据（会被数据文件中的值替换）</li>
+            <li>可替换的字段会在批量生成时被数据覆盖</li>
+            <li>固定字段（如标题、Logo位置）保持原样</li>
+          </ul>
+        </div>
+        
+        <div style="display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div>
+            <label style="display: block; font-size: 0.9rem; color: #4a5568; margin-bottom: 6px;">工作表名称</label>
+            <input type="text" id="manual-sheet-name" class="config-input" value="Sheet1" placeholder="输入工作表名称" style="width: 200px;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.9rem; color: #4a5568; margin-bottom: 6px;">数据字段名所在行</label>
+            <select id="manual-data-row" class="config-input" style="width: 150px;" onchange="updateManualTemplateTable()">
+              <option value="1">第1行（表头行）</option>
+              <option value="2" selected>第2行</option>
+              <option value="3">第3行</option>
+              <option value="4">第4行</option>
+              <option value="5">第5行</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.9rem; color: #4a5568; margin-bottom: 6px;">表格列数</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input type="number" id="manual-cols" class="config-input" value="3" min="1" max="20" style="width: 80px;" onchange="updateManualTemplateTable()">
+              <button class="btn btn-sm btn-secondary" onclick="addManualField()">➕ 添加字段</button>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 16px; overflow-x: auto;">
+          <table id="manual-template-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+              <tr>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left;">序号</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left; min-width: 120px;">显示名称（中文）</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #ebf8ff; text-align: left; min-width: 120px;">数据字段名（英文）⭐</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left; width: 100px;">字段类型</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left; width: 100px;">可替换</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left; min-width: 120px;">示例值</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; background: #f7fafc; text-align: left; width: 60px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="manual-template-tbody">
+            </tbody>
+          </table>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 0.9rem; color: #4a5568; margin-bottom: 6px;">默认值（当数据为空时使用）</label>
+          <input type="text" id="manual-default-value" class="config-input" placeholder="留空则不填充任何值">
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: space-between; margin-top: 20px;">
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-info" onclick="downloadTemplateAsExcel()">📥 下载Excel模板</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="closeManualTemplateCreator()">取消</button>
+            <button class="btn btn-success" onclick="createTemplateFromManual()">✅ 创建模板</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let makeTemplateData = null;
+    let finalTemplateData = null;
+    let templateData = null;
+    let dataRecords = null;
+    let currentSheet = 0;
+    let uploadedImages = {};
+    let folderStructure = {};
+    let serverPort = 3000;
+    let isServerRunning = false;
+    let editingField = null;
+    let editingRowIndex = null;
+    let editingColIndex = null;
+    let manualTemplateFields = [];
+
+    async function checkServerStatus() {
+      try {
+        const response = await fetch('/status');
+        if (response.ok) {
+          const data = await response.json();
+          showServerRunning(data.port, data);
+          return true;
+        }
+      } catch (e) {
+        showServerNotRunning();
+        return false;
+      }
+      return false;
+    }
+
+    function showServerRunning(port, data) {
+      serverPort = port;
+      isServerRunning = true;
+      document.getElementById('server-not-running').classList.add('hidden');
+      document.getElementById('server-running').classList.remove('hidden');
+      document.getElementById('server-url').value = `http://localhost:${port}`;
+      if (data) {
+        document.getElementById('stats-info').textContent = `📁 ${data.folderCount || 0} 个文件夹 | 📷 ${data.imageCount || 0} 张图片 | 📋 ${data.templatesCount || 0} 个模板`;
+      }
+    }
+
+    function showServerNotRunning() {
+      isServerRunning = false;
+      document.getElementById('server-not-running').classList.remove('hidden');
+      document.getElementById('server-running').classList.add('hidden');
+    }
+
+    function startServer() {
+      showToast('请在终端中运行 npm start 启动服务器', 'warning');
+      showStatus('提示：需要在项目目录下运行 npm start 启动服务器', 'warning');
+      setTimeout(() => {
+        // 尝试连接服务器
+        checkServerStatus().then((running) => {
+          if (!running) {
+            showToast('服务器未启动，请在终端运行 npm start', 'error');
+          }
+        });
+      }, 2000);
+    }
+
+    function openInBrowser() {
+      window.open(`http://localhost:${serverPort}`, '_blank');
+    }
+
+    function stopServer() {
+      fetch('/stop', { method: 'POST' }).then(() => {
+        showServerNotRunning();
+        showToast('服务器已停止', 'success');
+      }).catch(() => {
+        showToast('停止服务器失败', 'error');
+      });
+    }
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status-message');
+      statusDiv.textContent = message;
+      statusDiv.className = `status-${type}`;
+      statusDiv.style.display = 'block';
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function updateCompressionSettings() {
+      const quality = document.getElementById('compression-quality').value;
+      document.getElementById('quality-value').textContent = quality + '%';
+    }
+
+    async function analyzeTemplate(file) {
+      showStatus('info', '正在分析模板文件...');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        
+        makeTemplateData = {
+          sheets: []
+        };
+        
+        workbook.SheetNames.forEach((sheetName) => {
+          const worksheet = workbook.Sheets[sheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          
+          const fields = [];
+          const fieldMap = {};
+          
+          for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+            const row = data[rowIndex];
+            
+            for (let col = 0; col < row.length; col++) {
+              const cell = row[col];
+              if (typeof cell === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(cell.trim())) {
+                const dataName = cell.trim();
+                
+                if (!fieldMap[dataName]) {
+                  const displayNameRow = data[rowIndex - 1] || [];
+                  const displayName = displayNameRow[col] || dataName;
+                  
+                  fieldMap[dataName] = {
+                    name: displayName,
+                    dataName: dataName,
+                    column: col,
+                    type: detectFieldType(data, col),
+                    replaceable: true,
+                    defaultValue: ''
+                  };
+                }
+              }
+            }
+          }
+          
+          Object.values(fieldMap).forEach(field => {
+            fields.push(field);
+          });
+          
+          makeTemplateData.sheets.push({
+            name: sheetName,
+            data: data,
+            fields: fields
+          });
+        });
+        
+        displayTemplatePreview();
+        document.getElementById('template-make-badge').textContent = '已导入';
+        document.getElementById('template-make-badge').className = 'badge';
+        showStatus('success', `模板分析完成（识别到${makeTemplateData.sheets[0].fields.length}个字段）`);
+      } catch (error) {
+        showStatus('error', '分析失败: ' + error.message);
+        showToast('分析失败: ' + error.message, 'error');
+      }
+    }
+
+    function reimportTemplate() {
+      if (makeTemplateData && makeTemplateData.sheets && makeTemplateData.sheets.length > 0) {
+        if (!confirm('确定要重新导入模板吗？当前模板将被清除。')) {
+          return;
+        }
+      }
+      
+      makeTemplateData = { sheets: [] };
+      document.getElementById('template-make-badge').textContent = '未开始';
+      document.getElementById('template-make-badge').className = 'badge badge-warning';
+      document.getElementById('template-preview').innerHTML = '';
+      document.getElementById('fields-list').innerHTML = '';
+      
+      showStatus('info', '请重新开始制作模板');
+      showToast('已清除当前模板，请重新开始', 'info');
+    }
+
+    function enableStep2() {
+      if (!makeTemplateData || !makeTemplateData.sheets || makeTemplateData.sheets.length === 0) {
+        showToast('请先制作或导入模板', 'warning');
+        return;
+      }
+      
+      updateStepStatus(1, true);
+      document.getElementById('template-make-badge').textContent = '已完成';
+      document.getElementById('template-make-badge').className = 'badge badge-success';
+      
+      enableCard('card-template-import');
+      showToast('步骤1已完成，请进入步骤2导入模板', 'success');
+    }
+
+    async function handleFinalTemplateSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      await analyzeFinalTemplate(file);
+    }
+
+    async function handleFinalTemplateDrop(event) {
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      await analyzeFinalTemplate(file);
+    }
+
+    async function analyzeFinalTemplate(file) {
+      showStatus('info', '正在分析最终模板文件...');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        
+        finalTemplateData = {
+          sheets: []
+        };
+        
+        workbook.SheetNames.forEach((sheetName) => {
+          const worksheet = workbook.Sheets[sheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          
+          const fields = [];
+          const fieldMap = {};
+          
+          for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+            const row = data[rowIndex];
+            
+            for (let col = 0; col < row.length; col++) {
+              const cell = row[col];
+              if (typeof cell === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(cell.trim())) {
+                const dataName = cell.trim();
+                
+                if (!fieldMap[dataName]) {
+                  const displayNameRow = data[rowIndex - 1] || [];
+                  const displayName = displayNameRow[col] || dataName;
+                  
+                  fieldMap[dataName] = {
+                    name: displayName,
+                    dataName: dataName,
+                    column: col,
+                    type: detectFieldType(data, col),
+                    replaceable: true,
+                    defaultValue: ''
+                  };
+                }
+              }
+            }
+          }
+          
+          Object.values(fieldMap).forEach(field => {
+            fields.push(field);
+          });
+          
+          finalTemplateData.sheets.push({
+            name: sheetName,
+            data: data,
+            fields: fields
+          });
+        });
+        
+        templateData = finalTemplateData;
+        templateModified = false;
+        displayFinalTemplatePreview();
+        updateStepStatus(2, true);
+        document.getElementById('template-import-badge').textContent = '已导入';
+        document.getElementById('template-import-badge').className = 'badge';
+        
+        showStatus('success', `最终模板分析完成（识别到${finalTemplateData.sheets[0].fields.length}个字段）`);
+      } catch (error) {
+        showStatus('error', '分析失败: ' + error.message);
+        showToast('分析失败: ' + error.message, 'error');
+      }
+    }
+
+    function displayFinalTemplatePreview() {
+      if (!finalTemplateData || !finalTemplateData.sheets.length) return;
+      
+      const previewDiv = document.getElementById('final-template-preview');
+      previewDiv.classList.remove('hidden');
+      
+      const sheetTabs = document.getElementById('final-sheet-tabs');
+      sheetTabs.innerHTML = '';
+      
+      finalTemplateData.sheets.forEach((sheet, index) => {
+        const tab = document.createElement('div');
+        tab.className = 'sheet-tab' + (index === 0 ? ' active' : '');
+        tab.textContent = sheet.name;
+        tab.onclick = () => {
+          document.querySelectorAll('#final-sheet-tabs .sheet-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          displayFinalSheetContent(index);
+        };
+        sheetTabs.appendChild(tab);
+      });
+      
+      displayFinalSheetContent(0);
+    }
+
+    function displayFinalSheetContent(sheetIndex) {
+      const sheet = finalTemplateData.sheets[sheetIndex];
+      const contentDiv = document.getElementById('final-sheet-content');
+      
+      let html = '<table class="preview-table"><thead><tr>';
+      const cols = Math.max(...sheet.data.map(row => row.length));
+      for (let i = 0; i < cols; i++) {
+        html += `<th>列${i + 1}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+      
+      sheet.data.slice(0, 10).forEach(row => {
+        html += '<tr>';
+        for (let i = 0; i < cols; i++) {
+          html += `<td>${row[i] || ''}</td>`;
+        }
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      if (sheet.data.length > 10) {
+        html += `<div style="margin-top: 8px; color: #718096; font-size: 0.85rem;">... 还有${sheet.data.length - 10}行</div>`;
+      }
+      
+      contentDiv.innerHTML = html;
+      
+      const listDiv = document.getElementById('final-fields-list');
+      listDiv.innerHTML = '';
+      
+      sheet.fields.forEach((field, index) => {
+        const item = document.createElement('div');
+        item.className = 'field-item';
+        
+        item.innerHTML = `
+          <div style="flex: 1; min-width: 0;">
+            <div class="field-name" style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: #4a5568; font-size: 0.75rem;">[${index + 1}]</span>
+              <span style="font-weight: 500;">${field.name}</span>
+              <span style="font-size: 0.75rem; color: #805ad5; font-family: monospace;">${field.dataName}</span>
+            </div>
+          </div>
+          <select class="field-type-select" onchange="changeFinalFieldType(${sheetIndex}, ${index}, this.value)">
+            <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
+            <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+            <option value="date" ${field.type === 'date' ? 'selected' : ''}>日期</option>
+            <option value="image" ${field.type === 'image' ? 'selected' : ''}>图片</option>
+          </select>
+        `;
+        listDiv.appendChild(item);
+      });
+    }
+
+    let templateModified = false;
+    
+    function changeFinalFieldType(sheetIndex, fieldIndex, newType) {
+      finalTemplateData.sheets[sheetIndex].fields[fieldIndex].type = newType;
+      templateModified = true;
+      displayFinalSheetContent(sheetIndex);
+      showToast('字段类型已更新，请点击"保存模板修改"保存更改', 'info');
+      
+      // 更新徽章显示
+      document.getElementById('template-import-badge').textContent = '已修改';
+      document.getElementById('template-import-badge').className = 'badge badge-warning';
+    }
+    
+    function saveFinalTemplateChanges() {
+      if (!finalTemplateData || !finalTemplateData.sheets) {
+        showToast('没有可保存的模板', 'warning');
+        return;
+      }
+      
+      templateData = JSON.parse(JSON.stringify(finalTemplateData)); // 深拷贝保存
+      templateModified = false;
+      
+      document.getElementById('template-import-badge').textContent = '已保存';
+      document.getElementById('template-import-badge').className = 'badge badge-success';
+      
+      // 同时保存到服务器
+      const templateName = prompt('请输入模板名称（方便下次加载）:', '模板_' + new Date().toISOString().split('T')[0]);
+      if (templateName) {
+        const saveData = {
+          name: templateName,
+          sheets: templateData.sheets
+        };
+        
+        fetch('/save/template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saveData)
+        }).then(response => response.json()).then(result => {
+          if (result.success) {
+            showToast('✅ 模板修改已保存！已保存到服务器，下次可以直接加载！', 'success');
+          } else {
+            showToast('保存到服务器失败: ' + (result.error || '未知错误'), 'error');
+          }
+        }).catch(error => {
+          showToast('保存失败: ' + error.message, 'error');
+        });
+      } else {
+        showToast('✅ 模板修改已保存！可以进入下一步了', 'success');
+      }
+      
+      console.log('已保存的模板:', templateData);
+      console.log('图片字段:', templateData.sheets[0].fields.filter(f => f.type === 'image'));
+    }
+
+    function enableStep3() {
+      if (!finalTemplateData || !finalTemplateData.sheets || finalTemplateData.sheets.length === 0) {
+        showToast('请先导入最终模板', 'warning');
+        return;
+      }
+      
+      // 如果有修改但没保存，提醒用户
+      if (templateModified) {
+        if (confirm('检测到模板有修改但未保存，是否先保存修改再继续？')) {
+          saveFinalTemplateChanges();
+          return;
+        }
+      }
+      
+      // 确保 templateData 是最新的
+      if (!templateData) {
+        templateData = JSON.parse(JSON.stringify(finalTemplateData));
+      }
+      
+      console.log('进入步骤3，使用的模板:', templateData);
+      console.log('图片字段:', templateData.sheets[0].fields.filter(f => f.type === 'image'));
+      
+      enableCard('card-data');
+      updateStepStatus(2, true);
+      showToast('步骤2已完成，请进入步骤3导入数据', 'success');
+    }
+
+    function generateEnglishNameFromChinese(chineseText) {
+      if (!chineseText || typeof chineseText !== 'string') {
+        return 'field';
+      }
+      
+      const chineseToEnglish = {
+        '公司': 'company', '名称': 'name', '姓名': 'name', '部门': 'department',
+        '地址': 'address', '电话': 'phone', '邮箱': 'email', '日期': 'date',
+        '时间': 'time', '金额': 'amount', '数量': 'quantity', '价格': 'price',
+        '状态': 'status', '类型': 'type', '描述': 'description', '备注': 'remark',
+        '备注': 'remark', '说明': 'note', '标题': 'title', '内容': 'content',
+        '编号': 'code', 'ID': 'id', '标识': 'id', '序号': 'index', '顺序': 'order',
+        '创建': 'create', '更新': 'update', '删除': 'delete', '添加': 'add',
+        '编辑': 'edit', '查看': 'view', '审核': 'audit', '审批': 'approve',
+        '开始': 'start', '结束': 'end', '开始时间': 'startTime', '结束时间': 'endTime',
+        '开始日期': 'startDate', '结束日期': 'endDate', '开始时间': 'startTime',
+        '结束时间': 'endTime', '负责人': 'responsible', '联系人': 'contact',
+        '客户': 'customer', '供应商': 'supplier', '产品': 'product', '服务': 'service',
+        '项目': 'project', '任务': 'task', '订单': 'order', '合同': 'contract',
+        '发票': 'invoice', '收款': 'receipt', '付款': 'payment', '金额': 'amount',
+        '总额': 'total', '小计': 'subtotal', '总计': 'grandTotal', '税率': 'taxRate',
+        '税额': 'taxAmount', '净值': 'netAmount', '成本': 'cost', '利润': 'profit',
+        '收入': 'revenue', '支出': 'expense', '预算': 'budget', '实际': 'actual',
+        '计划': 'plan', '完成': 'completed', '进度': 'progress', '百分比': 'percentage',
+        '比例': 'ratio', '数量': 'quantity', '单位': 'unit', '规格': 'specification',
+        '型号': 'model', '品牌': 'brand', '产地': 'origin', '批次': 'batch',
+        '序列号': 'serialNumber', '版本': 'version', '版本号': 'versionNumber',
+        'Logo': 'logo', '图片': 'image', '照片': 'photo', '图标': 'icon',
+        'Logo图片': 'logoImage', '商标': 'logo', '标志': 'logo',
+        '注册资本': 'registeredCapital', '成立日期': 'establishDate',
+        '法定代表人': 'legalRepresentative', '营业执照': 'businessLicense',
+        '组织机构代码': 'organizationCode', '统一社会信用代码': 'unifiedSocialCreditCode',
+        '开户行': 'bankName', '银行账号': 'bankAccount', '税务登记号': 'taxRegistrationNumber',
+        '经营范围': 'businessScope', '公司类型': 'companyType', '行业': 'industry',
+        '员工人数': 'employeeCount', '年营业额': 'annualRevenue', '总资产': 'totalAssets',
+        '净资产': 'netAssets', '净利润': 'netProfit', '注册资本': 'registeredCapital',
+        '实收资本': 'paidInCapital', '投资总额': 'totalInvestment', '股东': 'shareholder',
+        '股权结构': 'equityStructure', '董事会': 'boardOfDirectors', '监事会': 'supervisoryBoard',
+        '管理层': 'management', '子公司': 'subsidiary', '分公司': 'branch', '关联公司': 'affiliate',
+        '总部': 'headquarters', '地址': 'address', '邮编': 'postalCode', '电话': 'phone',
+        '传真': 'fax', '邮箱': 'email', '网址': 'website', '联系人': 'contactPerson',
+        '职务': 'position', '手机': 'mobilePhone', '办公电话': 'officePhone',
+        '创建时间': 'createTime', '更新时间': 'updateTime', '创建人': 'creator',
+        '更新人': 'updater', '审核人': 'auditor', '审批人': 'approver',
+        '状态': 'status', '状态码': 'statusCode', '状态描述': 'statusDescription',
+        '备注': 'remarks', '备注信息': 'remarks', '说明': 'description', '补充说明': 'additionalNotes',
+        '附件': 'attachment', '文件': 'file', '文档': 'document', '链接': 'link',
+        'URL': 'url', '链接地址': 'urlAddress', '超链接': 'hyperlink',
+        '分类': 'category', '标签': 'tag', '关键词': 'keyword', '搜索词': 'searchTerm',
+        '优先级': 'priority', '紧急程度': 'urgency', '重要性': 'importance',
+        '等级': 'level', '级别': 'level', '档次': 'grade', '类别': 'category',
+        '类型': 'type', '种类': 'type', '样式': 'style', '格式': 'format',
+        '尺寸': 'size', '大小': 'size', '重量': 'weight', '体积': 'volume',
+        '颜色': 'color', '材质': 'material', '工艺': 'technology', '标准': 'standard',
+        '认证': 'certification', '证书': 'certificate', '资质': 'qualification',
+        '许可': 'license', '授权': 'authorization', '权限': 'permission',
+        '角色': 'role', '用户': 'user', '账户': 'account', '密码': 'password',
+        '用户名': 'username', '昵称': 'nickname', '头像': 'avatar', '签名': 'signature',
+        '简介': 'introduction', '个人简介': 'bio', '简历': 'resume', '学历': 'education',
+        '工作经历': 'workExperience', '技能': 'skills', '专业': 'major', '学位': 'degree',
+        '工龄': 'workYears', '薪资': 'salary', '待遇': 'benefits', '福利': 'welfare',
+        '假期': 'vacation', '加班': 'overtime', '请假': 'leave', '考勤': 'attendance',
+        '绩效': 'performance', '考核': 'assessment', '评价': 'evaluation', '评分': 'score',
+        '排名': 'ranking', '名次': 'rank', '等级': 'level', '星级': 'starLevel',
+        '积分': 'points', '奖励': 'reward', '惩罚': 'punishment', '奖金': 'bonus',
+        '提成': 'commission', '分红': 'dividend', '股权': 'equity', '期权': 'stockOption',
+        '股票': 'stock', '债券': 'bond', '基金': 'fund', '投资': 'investment',
+        '理财': 'finance', '存款': 'deposit', '贷款': 'loan', '还款': 'repayment',
+        '利息': 'interest', '利率': 'interestRate', '汇率': 'exchangeRate',
+        '货币': 'currency', '币种': 'currencyType', '金额': 'amount', '金额大写': 'amountInWords',
+        '金额小写': 'amountInNumbers', '金额格式': 'amountFormat', '金额转换': 'amountConversion',
+        '日期格式': 'dateFormat', '时间格式': 'timeFormat', '日期时间': 'datetime',
+        '时间戳': 'timestamp', '时区': 'timezone', '日期范围': 'dateRange',
+        '时间段': 'timeRange', '周': 'week', '月': 'month', '季度': 'quarter',
+        '年度': 'year', '学期': 'semester', '假期': 'holiday', '工作日': 'workDay',
+        '周末': 'weekend', '节假日': 'holiday', '纪念日': 'anniversary',
+        '生日': 'birthday', '纪念日': 'memorialDay', '节日': 'festival', '节气': 'solarTerm',
+        '季节': 'season', '气候': 'climate', '天气': 'weather', '温度': 'temperature',
+        '湿度': 'humidity', '风力': 'windForce', '空气质量': 'airQuality',
+        '地理位置': 'location', '经度': 'longitude', '纬度': 'latitude', '海拔': 'altitude',
+        '坐标': 'coordinates', '地址': 'address', '街道': 'street', '城市': 'city',
+        '省份': 'province', '国家': 'country', '地区': 'region', '区域': 'area',
+        '邮编': 'postalCode', '区号': 'areaCode', '时区': 'timezone', '语言': 'language',
+        '文化': 'culture', '习俗': 'customs', '传统': 'tradition', '节日': 'festival',
+        '宗教': 'religion', '信仰': 'belief', '价值观': 'values', '道德': 'morality',
+        '法律': 'law', '法规': 'regulation', '政策': 'policy', '规定': 'rule',
+        '标准': 'standard', '规范': 'specification', '流程': 'process', '步骤': 'step',
+        '方法': 'method', '技术': 'technology', '工具': 'tool', '设备': 'equipment',
+        '机器': 'machine', '仪器': 'instrument', '软件': 'software', '硬件': 'hardware',
+        '系统': 'system', '平台': 'platform', '框架': 'framework', '语言': 'programmingLanguage',
+        '数据库': 'database', '服务器': 'server', '网络': 'network', '安全': 'security',
+        '加密': 'encryption', '解密': 'decryption', '认证': 'authentication',
+        '授权': 'authorization', '权限': 'permission', '访问': 'access', '登录': 'login',
+        '注册': 'register', '注销': 'logout', '重置': 'reset', '恢复': 'recovery',
+        '备份': 'backup', '恢复': 'restore', '同步': 'sync', '更新': 'update',
+        '升级': 'upgrade', '降级': 'downgrade', '安装': 'install', '卸载': 'uninstall',
+        '配置': 'configuration', '设置': 'settings', '参数': 'parameters', '选项': 'options',
+        '功能': 'feature', '模块': 'module', '组件': 'component', '插件': 'plugin',
+        '扩展': 'extension', '集成': 'integration', '接口': 'interface', 'API': 'api',
+        'SDK': 'sdk', '文档': 'documentation', '教程': 'tutorial', '指南': 'guide',
+        '帮助': 'help', '支持': 'support', '反馈': 'feedback', '投诉': 'complaint',
+        '建议': 'suggestion', '意见': 'opinion', '评价': 'review', '评论': 'comment',
+        '留言': 'message', '私信': 'privateMessage', '通知': 'notification', '提醒': 'reminder',
+        '警告': 'warning', '错误': 'error', '异常': 'exception', '问题': 'issue',
+        'bug': 'bug', '缺陷': 'defect', '修复': 'fix', '改进': 'improvement',
+        '优化': 'optimization', '重构': 'refactoring', '升级': 'upgrade', '迁移': 'migration',
+        '部署': 'deployment', '发布': 'release', '上线': 'launch', '下线': 'offline',
+        '维护': 'maintenance', '监控': 'monitoring', '日志': 'log', '调试': 'debug',
+        '测试': 'testing', '验收': 'acceptance', '验证': 'validation', '确认': 'confirmation',
+        '审核': 'audit', '检查': 'inspection', '评估': 'evaluation', '分析': 'analysis',
+        '报告': 'report', '总结': 'summary', '摘要': 'abstract', '概述': 'overview',
+        '介绍': 'introduction', '说明': 'explanation', '描述': 'description', '定义': 'definition',
+        '概念': 'concept', '理论': 'theory', '实践': 'practice', '经验': 'experience',
+        '案例': 'case', '例子': 'example', '示例': 'sample', '模板': 'template',
+        '格式': 'format', '样式': 'style', '布局': 'layout', '设计': 'design',
+        '架构': 'architecture', '结构': 'structure', '组织': 'organization', '层次': 'hierarchy',
+        '关系': 'relationship', '关联': 'association', '依赖': 'dependency', '继承': 'inheritance',
+        '聚合': 'aggregation', '组合': 'composition', '封装': 'encapsulation', '抽象': 'abstraction',
+        '接口': 'interface', '实现': 'implementation', '继承': 'inheritance', '多态': 'polymorphism',
+        '设计模式': 'designPattern', '模式': 'pattern', '策略': 'strategy', '算法': 'algorithm',
+        '数据结构': 'dataStructure', '数据库设计': 'databaseDesign', '表设计': 'tableDesign',
+        '字段设计': 'fieldDesign', '索引设计': 'indexDesign', '查询优化': 'queryOptimization',
+        '性能优化': 'performanceOptimization', '缓存': 'caching', '负载均衡': 'loadBalancing',
+        '分布式': 'distributed', '微服务': 'microservices', '容器化': 'containerization',
+        'Docker': 'docker', 'Kubernetes': 'kubernetes', 'DevOps': 'devops', 'CI/CD': 'cicd',
+        '持续集成': 'continuousIntegration', '持续部署': 'continuousDeployment', '自动化': 'automation',
+        '脚本': 'script', '批处理': 'batchProcessing', '定时任务': 'scheduledTask', '异步': 'asynchronous',
+        '同步': 'synchronous', '并发': 'concurrency', '并行': 'parallel', '线程': 'thread',
+        '进程': 'process', '协程': 'coroutine', '锁': 'lock', '事务': 'transaction',
+        'ACID': 'acid', 'CAP': 'cap', 'BASE': 'base', '一致性': 'consistency', '可用性': 'availability',
+        '分区容错': 'partitionTolerance', '高可用': 'highAvailability', '高并发': 'highConcurrency',
+        '弹性': 'elasticity', '伸缩': 'scalability', '容错': 'faultTolerance', '灾备': 'disasterRecovery',
+        '备份': 'backup', '恢复': 'recovery', '容灾': 'disasterTolerance', '双活': 'activeActive',
+        '主备': 'activeStandby', '读写分离': 'readWriteSeparation', '分库分表': 'databaseSharding',
+        '分布式事务': 'distributedTransaction', '消息队列': 'messageQueue', '事件驱动': 'eventDriven',
+        'CQRS': 'cqrs', 'EDA': 'eda', 'SOA': 'soa', 'REST': 'rest', 'GraphQL': 'graphql',
+        'gRPC': 'grpc', 'WebSocket': 'websocket', 'MQTT': 'mqtt', 'AMQP': 'amqp',
+        'HTTP': 'http', 'HTTPS': 'https', 'TCP': 'tcp', 'UDP': 'udp', 'IP': 'ip',
+        'DNS': 'dns', 'CDN': 'cdn', 'SSL': 'ssl', 'TLS': 'tls', '证书': 'certificate',
+        'OAuth': 'oauth', 'JWT': 'jwt', 'SAML': 'saml', 'OpenID': 'openid',
+        'SSO': 'sso', 'RBAC': 'rbac', 'ABAC': 'abac', 'ACL': 'acl', '权限控制': 'accessControl',
+        '审计': 'audit', '日志': 'logging', '监控': 'monitoring', '告警': 'alerting',
+        '追踪': 'tracing', '指标': 'metrics', '仪表盘': 'dashboard', '可视化': 'visualization',
+        '报表': 'report', '图表': 'chart', '图形': 'graph', '表格': 'table',
+        '列表': 'list', '树': 'tree', '网格': 'grid', '卡片': 'card', '标签': 'tag',
+        '按钮': 'button', '链接': 'link', '表单': 'form', '输入框': 'input',
+        '选择框': 'select', '复选框': 'checkbox', '单选框': 'radio', '开关': 'switch',
+        '滑块': 'slider', '日期选择': 'datePicker', '时间选择': 'timePicker',
+        '富文本': 'richText', '编辑器': 'editor', '上传': 'upload', '下载': 'download',
+        '分页': 'pagination', '搜索': 'search', '筛选': 'filter', '排序': 'sort',
+        '导出': 'export', '导入': 'import', '打印': 'print', '分享': 'share',
+        '收藏': 'favorite', '点赞': 'like', '评论': 'comment', '转发': 'forward',
+        '关注': 'follow', '订阅': 'subscribe', '通知': 'notification', '消息': 'message',
+        '聊天': 'chat', '私信': 'privateChat', '群组': 'group', '频道': 'channel',
+        '论坛': 'forum', '社区': 'community', '博客': 'blog', '文章': 'article',
+        '帖子': 'post', '评论': 'comment', '回复': 'reply', '@提醒': 'mention',
+        '话题': 'topic', '标签': 'tag', '分类': 'category', '目录': 'directory',
+        '导航': 'navigation', '面包屑': 'breadcrumb', '侧边栏': 'sidebar', '头部': 'header',
+        '底部': 'footer', '内容区': 'content', '侧边栏': 'sidebar', '工具栏': 'toolbar',
+        '状态栏': 'statusBar', '进度条': 'progressBar', '加载': 'loading', '错误页': 'errorPage',
+        '空白页': 'emptyState', '引导页': 'onboarding', '登录页': 'loginPage', '注册页': 'registerPage',
+        '首页': 'homePage', '详情页': 'detailPage', '列表页': 'listPage', '表单页': 'formPage',
+        '设置页': 'settingsPage', '个人中心': 'profilePage', '管理后台': 'adminPanel',
+        '仪表盘': 'dashboard', '报表页': 'reportPage', '数据分析': 'dataAnalysis',
+        '可视化': 'dataVisualization', '图表展示': 'chartDisplay', '实时数据': 'realTimeData',
+        '历史数据': 'historicalData', '趋势分析': 'trendAnalysis', '对比分析': 'comparativeAnalysis',
+        '预测': 'prediction', '预警': 'earlyWarning', '告警': 'alert', '通知': 'notification',
+        '自动化': 'automation', '智能化': 'intelligence', 'AI': 'ai', '机器学习': 'machineLearning',
+        '深度学习': 'deepLearning', '神经网络': 'neuralNetwork', '模型': 'model', '训练': 'training',
+        '推理': 'inference', '预测': 'prediction', '推荐': 'recommendation', '个性化': 'personalization',
+        '搜索': 'search', '检索': 'retrieval', '分类': 'classification', '聚类': 'clustering',
+        '回归': 'regression', '分类': 'classification', '检测': 'detection', '识别': 'recognition',
+        'OCR': 'ocr', 'NLP': 'nlp', 'CV': 'cv', '语音识别': 'speechRecognition',
+        '自然语言处理': 'naturalLanguageProcessing', '图像识别': 'imageRecognition',
+        '视频分析': 'videoAnalysis', '音频处理': 'audioProcessing', '数据挖掘': 'dataMining',
+        '大数据': 'bigData', '云计算': 'cloudComputing', '边缘计算': 'edgeComputing',
+        '物联网': 'iot', '区块链': 'blockchain', '5G': '5g', '人工智能': 'artificialIntelligence',
+        '机器人': 'robot', '自动化': 'automation', '智能制造': 'smartManufacturing',
+        '智慧城市': 'smartCity', '智慧交通': 'smartTransportation', '智慧医疗': 'smartHealthcare',
+        '智慧教育': 'smartEducation', '智慧金融': 'smartFinance', '智慧零售': 'smartRetail',
+        '数字化转型': 'digitalTransformation', '信息化': 'informatization', '数字化': 'digitalization',
+        '智能化': 'intelligentization', '网络化': 'networking', '平台化': 'platformization',
+        '生态化': 'ecologicalization', '全球化': 'globalization', '本地化': 'localization',
+        '国际化': 'internationalization', '区域化': 'regionalization', '定制化': 'customization',
+        '标准化': 'standardization', '规范化': 'normalization', '流程化': 'proceduralization',
+        '模块化': 'modularization', '组件化': 'componentization', '服务化': 'servicization',
+        '产品化': 'productization', '商业化': 'commercialization', '市场化': 'marketization',
+        '品牌化': 'branding', '渠道化': 'channelization', '营销化': 'marketing',
+        '运营化': 'operation', '数据化': 'dataDriven', '精细化': 'refinement', '精益化': 'lean',
+        '敏捷': 'agile', '精益': 'lean', 'DevOps': 'devops', '持续改进': 'continuousImprovement',
+        '质量管理': 'qualityManagement', '项目管理': 'projectManagement', '风险管理': 'riskManagement',
+        '成本管理': 'costManagement', '时间管理': 'timeManagement', '资源管理': 'resourceManagement',
+        '团队管理': 'teamManagement', '人才管理': 'talentManagement', '知识管理': 'knowledgeManagement',
+        '文档管理': 'documentManagement', '配置管理': 'configurationManagement', '变更管理': 'changeManagement',
+        '发布管理': 'releaseManagement', '环境管理': 'environmentManagement', '安全管理': 'securityManagement',
+        '合规管理': 'complianceManagement', '审计管理': 'auditManagement', '治理': 'governance'
+      };
+      
+      let result = '';
+      let remainingText = chineseText.trim();
+      
+      for (const [chinese, english] of Object.entries(chineseToEnglish)) {
+        if (remainingText.includes(chinese)) {
+          if (result) result += '';
+          result += english;
+          remainingText = remainingText.replace(chinese, '');
+        }
+      }
+      
+      if (!result) {
+        const pinyin = convertToPinyin(chineseText);
+        result = pinyin.toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+      
+      if (!result || result.length === 0) {
+        result = 'field';
+      }
+      
+      return result;
+    }
+
+    function convertToPinyin(chineseText) {
+      const pinyinMap = {
+        '公': 'gong', '司': 'si', '名': 'ming', '称': 'cheng', '姓': 'xing', '姓': 'xing',
+        '部': 'bu', '门': 'men', '地': 'di', '址': 'zhi', '电': 'dian', '话': 'hua',
+        '邮': 'you', '箱': 'xiang', '日': 'ri', '期': 'qi', '时': 'shi', '间': 'jian',
+        '金': 'jin', '额': 'e', '数': 'shu', '量': 'liang', '价': 'jia', '格': 'ge',
+        '状': 'zhuang', '态': 'tai', '类': 'lei', '型': 'xing', '描': 'miao', '述': 'shu',
+        '备': 'bei', '注': 'zhu', '说': 'shuo', '明': 'ming', '标': 'biao', '题': 'ti',
+        '内': 'nei', '容': 'rong', '编': 'bian', '号': 'hao', '序': 'xu', '号': 'hao',
+        '顺': 'shun', '序': 'xu', '创': 'chuang', '建': 'jian', '更': 'geng', '新': 'xin',
+        '删': 'shan', '除': 'chu', '添': 'tian', '加': 'jia', '编': 'bian', '辑': 'ji',
+        '查': 'cha', '看': 'kan', '审': 'shen', '核': 'he', '批': 'pi', '准': 'zhun',
+        '开': 'kai', '始': 'shi', '结': 'jie', '束': 'shu', '负': 'fu', '责': 'ze',
+        '联': 'lian', '系': 'xi', '客': 'ke', '户': 'hu', '供': 'gong', '应': 'ying',
+        '产': 'chan', '品': 'pin', '服': 'fu', '务': 'wu', '项': 'xiang', '目': 'mu',
+        '任': 'ren', '务': 'wu', '订': 'ding', '单': 'dan', '合': 'he', '同': 'tong',
+        '发': 'fa', '票': 'piao', '收': 'shou', '款': 'kuan', '付': 'fu', '款': 'kuan',
+        '总': 'zong', '小': 'xiao', '计': 'ji', '税': 'shui', '率': 'lv', '税': 'shui',
+        '净': 'jing', '成': 'cheng', '本': 'ben', '利': 'li', '润': 'run', '收': 'shou',
+        '支': 'zhi', '出': 'chu', '预': 'yu', '算': 'suan', '实': 'shi', '际': 'ji',
+        '完': 'wan', '进': 'jin', '度': 'du', '百': 'bai', '分': 'fen', '比': 'bi',
+        '比': 'bi', '例': 'li', '单': 'dan', '位': 'wei', '规': 'gui', '格': 'ge',
+        '型': 'xing', '号': 'hao', '品': 'pin', '牌': 'pai', '产': 'chan', '地': 'di',
+        '批': 'pi', '次': 'ci', '序': 'xu', '列': 'lie', '版': 'ban', '本': 'ben',
+        '图': 'tu', '片': 'pian', '照': 'zhao', '片': 'pian', '图': 'tu', '标': 'biao',
+        '注': 'zhu', '资': 'zi', '本': 'ben', '法': 'fa', '定': 'ding', '代': 'dai',
+        '表': 'biao', '人': 'ren', '营': 'ying', '业': 'ye', '执': 'zhi', '照': 'zhao',
+        '组': 'zu', '织': 'zhi', '机': 'ji', '构': 'gou', '统': 'tong', '一': 'yi',
+        '信': 'xin', '用': 'yong', '代': 'dai', '码': 'ma', '开': 'kai', '户': 'hu',
+        '行': 'hang', '账': 'zhang', '号': 'hao', '范': 'fan', '围': 'wei', '员': 'yuan',
+        '工': 'gong', '人': 'ren', '数': 'shu', '营': 'ying', '业': 'ye', '额': 'e',
+        '资': 'zi', '产': 'chan', '净': 'jing', '利': 'li', '润': 'run', '实': 'shi',
+        '收': 'shou', '投': 'tou', '资': 'zi', '股': 'gu', '东': 'dong', '董': 'dong',
+        '事': 'shi', '会': 'hui', '监': 'jian', '管': 'guan', '层': 'ceng', '子': 'zi',
+        '分': 'fen', '关': 'guan', '联': 'lian', '总': 'zong', '部': 'bu', '邮': 'you',
+        '传': 'chuan', '网': 'wang', '职': 'zhi', '务': 'wu', '手': 'shou', '机': 'ji',
+        '办': 'ban', '公': 'gong', '审': 'shen', '批': 'pi', '码': 'ma', '描': 'miao',
+        '述': 'shu', '附': 'fu', '件': 'jian', '文': 'wen', '档': 'dang', '链': 'lian',
+        '接': 'jie', '分': 'fen', '类': 'lei', '标': 'biao', '签': 'qian', '关': 'guan',
+        '键': 'jian', '优': 'you', '先': 'xian', '紧': 'jin', '急': 'ji', '重': 'zhong',
+        '等': 'deng', '级': 'ji', '档': 'dang', '档': 'dang', '次': 'ci', '尺': 'chi',
+        '寸': 'cun', '重': 'zhong', '量': 'liang', '体': 'ti', '积': 'ji', '颜': 'yan',
+        '色': 'se', '材': 'cai', '质': 'zhi', '工': 'gong', '艺': 'yi', '认': 'ren',
+        '证': 'zheng', '资': 'zi', '质': 'zhi', '许': 'xu', '可': 'ke', '授': 'shou',
+        '权': 'quan', '角': 'jiao', '色': 'se', '用': 'yong', '户': 'hu', '账': 'zhang',
+        '密': 'mi', '昵': 'ni', '称': 'cheng', '头': 'tou', '像': 'xiang', '签': 'qian',
+        '简': 'jian', '历': 'li', '学': 'xue', '历': 'li', '专': 'zhuan', '业': 'ye',
+        '学': 'xue', '位': 'wei', '工': 'gong', '龄': 'ling', '薪': 'xin', '待': 'dai',
+        '福': 'fu', '假': 'jia', '加': 'jia', '班': 'ban', '考': 'kao', '勤': 'qin',
+        '绩': 'ji', '效': 'xiao', '评': 'ping', '价': 'jia', '评': 'ping', '分': 'fen',
+        '排': 'pai', '名': 'ming', '积': 'ji', '奖': 'jiang', '惩': 'cheng', '罚': 'fa',
+        '提': 'ti', '成': 'cheng', '分': 'fen', '红': 'hong', '期': 'qi', '权': 'quan',
+        '股': 'gu', '债': 'zhai', '基': 'ji', '金': 'jin', '理': 'li', '财': 'cai',
+        '存': 'cun', '贷': 'dai', '还': 'huan', '利': 'li', '汇': 'hui', '率': 'lv',
+        '货': 'huo', '币': 'bi', '时': 'shi', '间': 'jian', '戳': 'chuo', '时': 'shi',
+        '区': 'qu', '周': 'zhou', '月': 'yue', '季': 'ji', '年': 'nian', '假': 'jia',
+        '生': 'sheng', '日': 'ri', '节': 'jie', '气': 'qi', '季': 'ji', '节': 'jie',
+        '天': 'tian', '气': 'qi', '温': 'wen', '度': 'du', '湿': 'shi', '度': 'du',
+        '风': 'feng', '力': 'li', '空': 'kong', '气': 'qi', '质': 'zhi', '量': 'liang',
+        '位': 'wei', '置': 'zhi', '经': 'jing', '度': 'du', '纬': 'wei', '度': 'du',
+        '海': 'hai', '拔': 'ba', '城': 'cheng', '市': 'shi', '省': 'sheng', '国': 'guo',
+        '语': 'yu', '言': 'yan', '文': 'wen', '化': 'hua', '习': 'xi', '俗': 'su',
+        '宗': 'zong', '教': 'jiao', '法': 'fa', '律': 'lv', '政': 'zheng', '策': 'ce',
+        '标': 'biao', '准': 'zhun', '规': 'gui', '范': 'fan', '流': 'liu', '程': 'cheng',
+        '方': 'fang', '法': 'fa', '技': 'ji', '术': 'shu', '工': 'gong', '具': 'ju',
+        '设': 'she', '备': 'bei', '软': 'ruan', '件': 'jian', '硬': 'ying', '系': 'xi',
+        '平': 'ping', '台': 'tai', '框': 'kuang', '架': 'jia', '数': 'shu', '据': 'ju',
+        '库': 'ku', '服': 'fu', '务': 'wu', '器': 'qi', '安': 'an', '全': 'quan',
+        '加': 'jia', '密': 'mi', '解': 'jie', '授': 'shou', '权': 'quan', '访': 'fang',
+        '登': 'deng', '录': 'lu', '注': 'zhu', '册': 'ce', '注': 'zhu', '销': 'xiao',
+        '重': 'chong', '置': 'zhi', '恢': 'hui', '复': 'fu', '同': 'tong', '步': 'bu',
+        '升': 'sheng', '级': 'ji', '安': 'an', '装': 'zhuang', '配': 'pei', '置': 'zhi',
+        '参': 'can', '数': 'shu', '功': 'gong', '能': 'neng', '模': 'mo', '块': 'kuai',
+        '组': 'zu', '件': 'jian', '插': 'cha', '件': 'jian', '扩': 'kuo', '展': 'zhan',
+        '集': 'ji', '成': 'cheng', '接': 'jie', '口': 'kou', '文': 'wen', '档': 'dang',
+        '教': 'jiao', '程': 'cheng', '帮': 'bang', '助': 'zhu', '反': 'fan', '馈': 'kui',
+        '建': 'jian', '议': 'yi', '评': 'ping', '价': 'jia', '留': 'liu', '言': 'yan',
+        '通': 'tong', '知': 'zhi', '提': 'ti', '醒': 'xing', '警': 'jing', '告': 'gao',
+        '错': 'cuo', '异': 'yi', '常': 'chang', '问': 'wen', '题': 'ti', '修': 'xiu',
+        '改': 'gai', '优': 'you', '化': 'hua', '重': 'chong', '构': 'gou', '迁': 'qian',
+        '移': 'yi', '部': 'bu', '署': 'shu', '发': 'fa', '布': 'bu', '上': 'shang',
+        '线': 'xian', '维': 'wei', '护': 'hu', '监': 'jian', '控': 'kong', '调': 'tiao',
+        '试': 'shi', '验': 'yan', '验': 'yan', '收': 'shou', '确': 'que', '认': 'ren',
+        '检': 'jian', '查': 'cha', '评': 'ping', '估': 'gu', '分': 'fen', '析': 'xi',
+        '报': 'bao', '告': 'gao', '总': 'zong', '结': 'jie', '概': 'gai', '述': 'shu',
+        '介': 'jie', '绍': 'shao', '定': 'ding', '义': 'yi', '概': 'gai', '念': 'nian',
+        '理': 'li', '论': 'lun', '实': 'shi', '践': 'jian', '案': 'an', '例': 'li',
+        '格': 'ge', '式': 'shi', '样': 'yang', '布': 'bu', '局': 'ju', '设': 'she',
+        '计': 'ji', '架': 'jia', '构': 'gou', '组': 'zu', '织': 'zhi', '层': 'ceng',
+        '关': 'guan', '系': 'xi', '依': 'yi', '赖': 'lai', '继': 'ji', '承': 'cheng',
+        '聚': 'ju', '合': 'he', '封': 'feng', '装': 'zhuang', '抽': 'chou', '象': 'xiang',
+        '实': 'shi', '现': 'xian', '多': 'duo', '态': 'tai', '算': 'suan', '法': 'fa',
+        '设': 'she', '计': 'ji', '模': 'mo', '式': 'shi', '策': 'ce', '略': 'lue',
+        '查': 'cha', '询': 'xun', '性': 'xing', '能': 'neng', '缓': 'huan', '存': 'cun',
+        '负': 'fu', '载': 'zai', '均': 'jun', '衡': 'heng', '分': 'fen', '布': 'bu',
+        '式': 'shi', '微': 'wei', '服': 'fu', '务': 'wu', '容': 'rong', '器': 'qi',
+        '化': 'hua', '持': 'chi', '续': 'xu', '集': 'ji', '成': 'cheng', '部': 'bu',
+        '署': 'shu', '自': 'zi', '动': 'dong', '化': 'hua', '脚': 'jiao', '本': 'ben',
+        '定': 'ding', '时': 'shi', '任': 'ren', '务': 'wu', '异': 'yi', '步': 'bu',
+        '并': 'bing', '发': 'fa', '并': 'bing', '行': 'xing', '线': 'xian', '程': 'cheng',
+        '进': 'jin', '程': 'cheng', '协': 'xie', '程': 'cheng', '锁': 'suo', '事': 'shi',
+        '务': 'wu', '一': 'yi', '致': 'zhi', '性': 'xing', '可': 'ke', '用': 'yong',
+        '性': 'xing', '弹': 'tan', '性': 'xing', '伸': 'shen', '缩': 'suo', '容': 'rong',
+        '错': 'cuo', '灾': 'zai', '备': 'bei', '双': 'shuang', '活': 'huo', '主': 'zhu',
+        '备': 'bei', '读': 'du', '写': 'xie', '分': 'fen', '离': 'li', '分': 'fen',
+        '库': 'ku', '消': 'xiao', '息': 'xi', '队': 'dui', '事': 'shi', '件': 'jian',
+        '驱': 'qu', '动': 'dong', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi',
+        '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi', '协': 'xie', '议': 'yi'
+      };
+      
+      let result = '';
+      for (const char of chineseText) {
+        if (pinyinMap[char]) {
+          result += pinyinMap[char];
+        } else if (/[a-zA-Z]/.test(char)) {
+          result += char;
+        } else if (/[0-9]/.test(char)) {
+          result += char;
+        }
+      }
+      
+      return result || 'field';
+    }
+
+    function detectFieldType(data, columnIndex) {
+      let hasNumber = false;
+      let hasDate = false;
+      let hasImage = false;
+      
+      // 模板结构：
+      // 第1行：显示名称（中文）
+      // 第2行：字段名（英文）
+      // 第3行及以后：示例数据
+      
+      // 检查字段名（第2行，索引1）和显示名（第1行，索引0）
+      for (let rowIndex = 0; rowIndex < Math.min(data.length, 2); rowIndex++) {
+        const cell = data[rowIndex][columnIndex];
+        if (cell === undefined || cell === null) continue;
+        
+        const cellStr = String(cell).toLowerCase();
+        
+        // 检查是否包含图片关键字
+        const imageKeywords = ['图片', '照片', 'image', 'img', 'pic', 'logo', 'photo', 'picture', 'zhaopian', 'tupian'];
+        for (const keyword of imageKeywords) {
+          if (cellStr.includes(keyword)) {
+            hasImage = true;
+            break;
+          }
+        }
+        if (hasImage) break;
+      }
+      
+      // 检查示例数据（从第3行开始），用于确定数字和日期
+      for (let rowIndex = 2; rowIndex < data.length; rowIndex++) {
+        const cell = data[rowIndex][columnIndex];
+        if (cell === undefined || cell === null || cell === '') continue;
+        
+        const cellStr = String(cell).toLowerCase();
+        
+        if (typeof cell === 'number' && !isNaN(cell)) {
+          hasNumber = true;
+        } else if (typeof cell === 'string') {
+          // 检查日期格式
+          if (cellStr.match(/^\d{4}-\d{2}-\d{2}/) || cellStr.match(/^\d{4}\/\d{2}\/\d{2}/)) {
+            hasDate = true;
+          }
+        }
+      }
+      
+      // 优先级：图片 > 日期 > 数字 > 文本
+      if (hasImage) return 'image';
+      if (hasDate) return 'date';
+      if (hasNumber) return 'number';
+      return 'text';
+    }
+
+    function displayTemplatePreview() {
+      if (!makeTemplateData || !makeTemplateData.sheets || makeTemplateData.sheets.length === 0) {
+        return;
+      }
+      
+      document.getElementById('template-preview').classList.remove('hidden');
+      
+      const tabsContainer = document.getElementById('sheet-tabs');
+      tabsContainer.innerHTML = '';
+      
+      makeTemplateData.sheets.forEach((sheet, index) => {
+        const tab = document.createElement('div');
+        tab.className = `sheet-tab ${index === currentSheet ? 'active' : ''}`;
+        tab.textContent = sheet.name;
+        tab.onclick = () => {
+          currentSheet = index;
+          displayTemplatePreview();
+        };
+        tabsContainer.appendChild(tab);
+      });
+      
+      const sheet = makeTemplateData.sheets[currentSheet];
+      displaySheetContent(sheet);
+      displayFieldsList(sheet);
+    }
+
+    function displaySheetContent(sheet) {
+      const contentDiv = document.getElementById('sheet-content');
+      
+      let html = '<table class="preview-table">';
+      sheet.data.forEach((row, rowIndex) => {
+        html += '<tr>';
+        row.forEach((cell, colIndex) => {
+          const field = sheet.fields.find(f => f.column === colIndex);
+          const isHeader = rowIndex === 0;
+          const isFixed = field && !field.replaceable;
+          const bgColor = isHeader ? 'background: #f7fafc;' : isFixed ? 'background: #fffaf0;' : '';
+          html += `<td style="${bgColor}">${cell || ''}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+      
+      contentDiv.innerHTML = html;
+    }
+
+    function displayFieldsList(sheet) {
+      const listDiv = document.getElementById('fields-list');
+      listDiv.innerHTML = '';
+      
+      const totalRows = sheet.data.length;
+      
+      sheet.fields.forEach((field, index) => {
+        const item = document.createElement('div');
+        item.className = `field-item ${field.replaceable ? 'editable' : 'fixed'}`;
+        
+        const allValues = [];
+        for (let i = 0; i < totalRows; i++) {
+          const row = sheet.data[i];
+          const value = row && row[field.column];
+          if (value !== undefined && value !== '') {
+            allValues.push({ row: i + 1, value: value });
+          }
+        }
+        
+        const displayLabel = field.name || `列${index + 1}`;
+        
+        let dataPreview = '';
+        if (allValues.length > 0) {
+          dataPreview = `<div style="font-size: 0.75rem; margin-top: 4px;">`;
+          dataPreview += `<strong style="color: #4a5568;">数据预览 (${allValues.length}条):</strong><br>`;
+          allValues.forEach((item, idx) => {
+            dataPreview += `<span style="color: #718096;">[行${item.row}]</span> <span style="color: #2d3748;">${String(item.value).substring(0, 50)}${String(item.value).length > 50 ? '...' : ''}</span>`;
+            if (idx < allValues.length - 1) dataPreview += `<br>`;
+          });
+          dataPreview += `</div>`;
+        } else {
+          dataPreview = `<div style="font-size: 0.75rem; margin-top: 4px; color: #e53e3e;">无数据</div>`;
+        }
+        
+        item.innerHTML = `
+          <div style="flex: 1; min-width: 0;">
+            <div class="field-name" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="color: #4a5568; font-size: 0.75rem;">[${index + 1}]</span>
+              <span style="font-weight: 500;">${displayLabel}</span>
+              <span style="font-size: 0.75rem; color: #805ad5; font-family: monospace;">${field.dataName}</span>
+            </div>
+            ${dataPreview}
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+            <select class="field-type-select" onchange="changeFieldType(${index}, this.value)">
+              <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
+              <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+              <option value="date" ${field.type === 'date' ? 'selected' : ''}>日期</option>
+              <option value="image" ${field.type === 'image' ? 'selected' : ''}>图片</option>
+            </select>
+            <div class="field-toggle ${field.replaceable ? 'active' : ''}" onclick="toggleFieldReplaceable(${index})"></div>
+            <button class="btn btn-xs btn-primary" onclick="editField(${index})">✏️</button>
+          </div>
+        `;
+        item.onclick = (e) => {
+          if (!e.target.classList.contains('field-toggle') && !e.target.classList.contains('btn')) {
+            editField(index);
+          }
+        };
+        listDiv.appendChild(item);
+      });
+    }
+
+    function getTypeLabel(type) {
+      const labels = { text: '文本', number: '数字', date: '日期', image: '图片' };
+      return labels[type] || type;
+    }
+
+    function toggleFieldReplaceable(index) {
+      const sheet = templateData.sheets[currentSheet];
+      sheet.fields[index].replaceable = !sheet.fields[index].replaceable;
+      displayFieldsList(sheet);
+      displaySheetContent(sheet);
+    }
+
+    function changeFieldType(index, newType) {
+      const sheet = makeTemplateData.sheets[currentSheet];
+      sheet.fields[index].type = newType;
+      displayFieldsList(sheet);
+      showToast('字段类型已更新', 'success');
+    }
+
+    function editField(index) {
+      const sheet = templateData.sheets[currentSheet];
+      const field = sheet.fields[index];
+      
+      editingField = field;
+      editingRowIndex = 0;
+      editingColIndex = index;
+      
+      document.getElementById('edit-field-name').value = field.name;
+      document.getElementById('edit-field-data-name').value = field.dataName || field.name;
+      document.getElementById('edit-field-type').value = field.type;
+      document.getElementById('edit-field-default').value = field.defaultValue || '';
+      
+      const toggle = document.getElementById('edit-field-replaceable');
+      if (field.replaceable) {
+        toggle.classList.add('active');
+      } else {
+        toggle.classList.remove('active');
+      }
+      
+      document.getElementById('field-edit-modal').style.display = 'flex';
+      document.getElementById('field-edit-modal').classList.remove('hidden');
+    }
+
+    function toggleReplaceable() {
+      const toggle = document.getElementById('edit-field-replaceable');
+      toggle.classList.toggle('active');
+    }
+
+    function generateEnglishName() {
+      const displayName = document.getElementById('edit-field-name').value;
+      const englishName = generateEnglishNameFromChinese(displayName);
+      document.getElementById('edit-field-data-name').value = englishName;
+      showToast('已自动生成英文字段名', 'success');
+    }
+
+    function saveFieldEdit() {
+      editingField.name = document.getElementById('edit-field-name').value;
+      editingField.dataName = document.getElementById('edit-field-data-name').value;
+      editingField.type = document.getElementById('edit-field-type').value;
+      editingField.replaceable = document.getElementById('edit-field-replaceable').classList.contains('active');
+      editingField.defaultValue = document.getElementById('edit-field-default').value;
+      
+      displayFieldsList(templateData.sheets[currentSheet]);
+      displaySheetContent(templateData.sheets[currentSheet]);
+      closeFieldEditModal();
+      showToast('字段修改已保存', 'success');
+    }
+
+    function closeFieldEditModal() {
+      document.getElementById('field-edit-modal').style.display = 'none';
+      document.getElementById('field-edit-modal').classList.add('hidden');
+      editingField = null;
+    }
+
+    function showManualTemplateCreator() {
+      manualTemplateFields = [];
+      const cols = parseInt(document.getElementById('manual-cols').value) || 3;
+      for (let i = 0; i < cols; i++) {
+        manualTemplateFields.push({
+          displayName: '',
+          dataName: '',
+          type: 'text',
+          replaceable: true,
+          sampleValue: ''
+        });
+      }
+      renderManualTemplateTable();
+      document.getElementById('manual-template-modal').style.display = 'flex';
+      document.getElementById('manual-template-modal').classList.remove('hidden');
+    }
+
+    function closeManualTemplateCreator() {
+      document.getElementById('manual-template-modal').style.display = 'none';
+      document.getElementById('manual-template-modal').classList.add('hidden');
+    }
+
+    function updateManualTemplateTable() {
+      const cols = parseInt(document.getElementById('manual-cols').value) || 3;
+      while (manualTemplateFields.length < cols) {
+        manualTemplateFields.push({
+          displayName: '',
+          dataName: '',
+          type: 'text',
+          replaceable: true,
+          sampleValue: ''
+        });
+      }
+      while (manualTemplateFields.length > cols) {
+        manualTemplateFields.pop();
+      }
+      renderManualTemplateTable();
+    }
+
+    function addManualField() {
+      manualTemplateFields.push({
+        displayName: '',
+        dataName: '',
+        type: 'text',
+        replaceable: true,
+        sampleValue: ''
+      });
+      document.getElementById('manual-cols').value = manualTemplateFields.length;
+      renderManualTemplateTable();
+    }
+
+    function removeManualField(index) {
+      if (manualTemplateFields.length > 1) {
+        manualTemplateFields.splice(index, 1);
+        document.getElementById('manual-cols').value = manualTemplateFields.length;
+        renderManualTemplateTable();
+      }
+    }
+
+    function updateFieldProperty(index, property, value) {
+      if (property === 'displayName') {
+        manualTemplateFields[index].displayName = value;
+        if (!manualTemplateFields[index].dataName || manualTemplateFields[index].dataName === generateEnglishNameFromChinese(manualTemplateFields[index]._prevName || '')) {
+          manualTemplateFields[index].dataName = generateEnglishNameFromChinese(value);
+        }
+        manualTemplateFields[index]._prevName = value;
+      } else if (property === 'dataName') {
+        manualTemplateFields[index].dataName = value;
+      } else if (property === 'type') {
+        manualTemplateFields[index].type = value;
+      } else if (property === 'replaceable') {
+        manualTemplateFields[index].replaceable = value;
+      } else if (property === 'sampleValue') {
+        manualTemplateFields[index].sampleValue = value;
+      }
+    }
+
+    function renderManualTemplateTable() {
+      const tbody = document.getElementById('manual-template-tbody');
+      tbody.innerHTML = manualTemplateFields.map((field, index) => `
+        <tr>
+          <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center;">${index + 1}</td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0;">
+            <input type="text" value="${field.displayName}" 
+              onchange="updateFieldProperty(${index}, 'displayName', this.value)"
+              placeholder="例如：公司名称" style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px;">
+          </td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0;">
+            <input type="text" value="${field.dataName}" 
+              onchange="updateFieldProperty(${index}, 'dataName', this.value)"
+              placeholder="companyName" style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px; font-family: monospace;">
+          </td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0;">
+            <select onchange="updateFieldProperty(${index}, 'type', this.value)" style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px;">
+              <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
+              <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+              <option value="date" ${field.type === 'date' ? 'selected' : ''}>日期</option>
+              <option value="image" ${field.type === 'image' ? 'selected' : ''}>图片</option>
+            </select>
+          </td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">
+            <input type="checkbox" ${field.replaceable ? 'checked' : ''} 
+              onchange="updateFieldProperty(${index}, 'replaceable', this.checked)">
+          </td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0;">
+            <input type="text" value="${field.sampleValue}" 
+              onchange="updateFieldProperty(${index}, 'sampleValue', this.value)"
+              placeholder="示例数据" style="width: 100%; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px;">
+          </td>
+          <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">
+            <button class="btn btn-xs btn-danger" onclick="removeManualField(${index})" ${manualTemplateFields.length <= 1 ? 'disabled' : ''}>🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function createTemplateFromManual() {
+      const sheetName = document.getElementById('manual-sheet-name').value || 'Sheet1';
+      const defaultValue = document.getElementById('manual-default-value').value || '';
+      const dataNameRowIndex = parseInt(document.getElementById('manual-data-row').value) || 2;
+      
+      const validFields = manualTemplateFields.filter(f => f.displayName.trim());
+      
+      if (validFields.length === 0) {
+        showToast('请至少填写一个字段名称', 'error');
+        return;
+      }
+      
+      const displayNameRow = validFields.map(f => f.displayName);
+      const dataNameRow = validFields.map(f => f.dataName || generateEnglishNameFromChinese(f.displayName));
+      const sampleValueRow = validFields.map(f => f.sampleValue || defaultValue);
+      
+      const totalRows = dataNameRowIndex + 2;
+      const templateDataRows = [];
+      
+      for (let i = 1; i <= totalRows; i++) {
+        if (i === dataNameRowIndex - 1) {
+          templateDataRows.push(displayNameRow);
+        } else if (i === dataNameRowIndex) {
+          templateDataRows.push(dataNameRow);
+        } else if (i === dataNameRowIndex + 1) {
+          templateDataRows.push(sampleValueRow);
+        } else {
+          templateDataRows.push(new Array(validFields.length).fill(''));
+        }
+      }
+      
+      const fields = validFields.map((f, index) => ({
+        name: f.displayName,
+        dataName: f.dataName || generateEnglishNameFromChinese(f.displayName),
+        column: index,
+        type: f.type,
+        replaceable: f.replaceable,
+        defaultValue: defaultValue
+      }));
+      
+      makeTemplateData = {
+        sheets: [{
+          name: sheetName,
+          data: templateDataRows,
+          fields: fields
+        }]
+      };
+      
+      currentSheet = 0;
+      closeManualTemplateCreator();
+      displayTemplatePreview();
+      document.getElementById('template-make-badge').textContent = '已创建';
+      document.getElementById('template-make-badge').className = 'badge badge-success';
+      showStatus('success', '模板创建成功！请点击"下一步"进入步骤2');
+      showToast('手动模板创建成功', 'success');
+    }
+
+    function downloadTemplateAsExcel() {
+      const sheetName = document.getElementById('manual-sheet-name').value || 'Sheet1';
+      const defaultValue = document.getElementById('manual-default-value').value || '';
+      const dataNameRowIndex = parseInt(document.getElementById('manual-data-row').value) || 2;
+      
+      const validFields = manualTemplateFields.filter(f => f.displayName.trim());
+      
+      if (validFields.length === 0) {
+        showToast('请至少填写一个字段名称后再下载', 'warning');
+        return;
+      }
+      
+      const displayNameRow = validFields.map(f => f.displayName);
+      const dataNameRow = validFields.map(f => f.dataName || generateEnglishNameFromChinese(f.displayName));
+      const sampleValueRow = validFields.map(f => f.sampleValue || defaultValue);
+      
+      const totalRows = dataNameRowIndex + 2;
+      const wsData = [];
+      
+      for (let i = 1; i <= totalRows; i++) {
+        if (i === dataNameRowIndex - 1) {
+          wsData.push(displayNameRow);
+        } else if (i === dataNameRowIndex) {
+          wsData.push(dataNameRow);
+        } else if (i === dataNameRowIndex + 1) {
+          wsData.push(sampleValueRow);
+        } else {
+          wsData.push(new Array(validFields.length).fill(''));
+        }
+      }
+      
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      ws['!cols'] = displayNameRow.map(() => ({ wch: 15 }));
+      
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      
+      const filename = `${sheetName}_模板.xlsx`;
+      XLSX.writeFile(wb, filename);
+      
+      showToast('Excel模板已下载', 'success');
+    }
+
+    function downloadCurrentTemplate() {
+      if (!makeTemplateData || !makeTemplateData.sheets || makeTemplateData.sheets.length === 0) {
+        showToast('请先导入或创建模板', 'warning');
+        return;
+      }
+      
+      const wb = XLSX.utils.book_new();
+      
+      makeTemplateData.sheets.forEach((sheet, index) => {
+        const wsData = sheet.data.map(row => [...row]);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), sheet.name || `Sheet${index + 1}`);
+      });
+      
+      const filename = `模板_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      
+      showToast('Excel模板已下载', 'success');
+    }
+    
+    function downloadFinalTemplate() {
+      if (!finalTemplateData || !finalTemplateData.sheets || finalTemplateData.sheets.length === 0) {
+        showToast('请先导入最终模板', 'warning');
+        return;
+      }
+      
+      const wb = XLSX.utils.book_new();
+      
+      finalTemplateData.sheets.forEach((sheet, index) => {
+        const wsData = sheet.data.map(row => [...row]);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), sheet.name || `Sheet${index + 1}`);
+      });
+      
+      const filename = `最终模板_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      
+      showToast('最终Excel模板已下载', 'success');
+    }
+
+    async function handleTemplateSelect(event) {
+      const file = event.target.files[0];
+      if (file) analyzeTemplate(file);
+    }
+
+    function handleTemplateDrop(event) {
+      const file = event.target.files[0];
+      if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+        analyzeTemplate(file);
+      }
+    }
+
+    async function loadData(file) {
+      showStatus('info', '正在加载数据文件...');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        
+        let workbook;
+        if (file.name.endsWith('.csv')) {
+          const text = new TextDecoder('utf-8').decode(arrayBuffer);
+          const lines = text.split('\n').filter(line => line.trim());
+          const headers = lines[0].split(',').map(h => h.trim());
+          const data = lines.slice(1).map(line => {
+            const values = line.split(',');
+            const obj = {};
+            headers.forEach((header, i) => {
+              obj[header] = values[i] ? values[i].trim() : '';
+            });
+            return obj;
+          });
+          dataRecords = { headers, data };
+        } else {
+          workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          console.log('=== 数据Excel原始行 ===');
+          rawData.forEach((row, index) => {
+            console.log(`行${index}:`, row);
+          });
+          
+          // 重要！你的数据Excel有两行表头！
+          // 第1行：中文显示名
+          // 第2行：英文字段名
+          // 第3行开始：数据
+          const headers = rawData[1].map(h => String(h || '')); // 用第2行作为字段名
+          const data = [];
+          
+          // 从第3行开始读取数据（索引2）
+          for (let i = 2; i < rawData.length; i++) {
+            const row = rawData[i];
+            if (!row || row.length === 0) continue;
+            
+            // 检查这行是不是有效数据
+            const hasData = row.some(cell => cell !== null && cell !== undefined && cell !== '');
+            if (!hasData) continue;
+            
+            const obj = {};
+            headers.forEach((header, j) => {
+              obj[header] = row[j] !== undefined ? row[j] : '';
+            });
+            data.push(obj);
+          }
+          
+          console.log('=== 使用的字段名 ===', headers);
+          console.log('=== 最终数据记录 ===');
+          data.forEach((record, index) => {
+            console.log(`记录${index}:`, record);
+          });
+          
+          dataRecords = { headers, data };
+        }
+        
+        displayDataPreview();
+        populateFilenameField();
+        updateStepStatus(3, true);
+        document.getElementById('data-badge').textContent = '已导入';
+        document.getElementById('data-badge').className = 'badge';
+        showStatus('success', `成功加载 ${dataRecords.data.length} 条数据`);
+        updateImageMapping();
+      } catch (error) {
+        showStatus('error', '加载失败: ' + error.message);
+        showToast('加载失败: ' + error.message, 'error');
+      }
+    }
+
+    function displayDataPreview() {
+      document.getElementById('data-preview').classList.remove('hidden');
+      
+      // 同步 importedData（方便后续使用）
+      importedData = dataRecords.data;
+      
+      // 显示字段匹配情况
+      let matchHtml = '<div style="margin-bottom: 16px; padding: 12px; background: #f7fafc; border: 1px solid #cbd5e0; border-radius: 6px;">';
+      matchHtml += '<h5 style="margin-bottom: 8px; color: #2d3748;">🔗 字段匹配情况</h5>';
+      
+      if (templateData && templateData.sheets && templateData.sheets.length > 0) {
+        const sheet = templateData.sheets[0];
+        const matched = [];
+        const unmatched = [];
+        
+        sheet.fields.forEach(field => {
+          let found = false;
+          if (field.dataName && dataRecords.headers.includes(field.dataName)) {
+            found = true;
+          } else if (field.name && dataRecords.headers.includes(field.name)) {
+            found = true;
+          } else {
+            // 模糊匹配
+            for (const header of dataRecords.headers) {
+              if (header.toLowerCase().includes(field.name.toLowerCase()) || 
+                  header.toLowerCase().includes(field.dataName?.toLowerCase() || '')) {
+                found = true;
+                break;
+              }
+            }
+          }
+          
+          if (found) {
+            matched.push(field);
+          } else {
+            unmatched.push(field);
+          }
+        });
+        
+        if (matched.length > 0) {
+          matchHtml += `<div style="color: #22543d; margin-bottom: 6px;">✅ 匹配成功 (${matched.length}): <strong>${matched.map(f => f.name).join(', ')}</strong></div>`;
+        }
+        if (unmatched.length > 0) {
+          matchHtml += `<div style="color: #742a2a; margin-bottom: 6px;">❌ 未匹配 (${unmatched.length}): <strong>${unmatched.map(f => f.name).join(', ')}</strong></div>`;
+          matchHtml += '<div style="font-size: 0.8rem; color: #718096;">提示：未匹配的字段将保持模板原值不变</div>';
+        }
+        if (matched.length === sheet.fields.length) {
+          matchHtml += '<div style="color: #276749; font-weight: bold;">🎉 所有字段都匹配成功！</div>';
+        }
+      } else {
+        matchHtml += '<div style="color: #718096;">请先导入模板，才能显示匹配情况</div>';
+      }
+      
+      matchHtml += '</div>';
+      
+      const tableDiv = document.getElementById('data-table');
+      let html = matchHtml + '<table class="preview-table"><thead><tr>';
+      
+      dataRecords.headers.forEach(header => {
+        html += `<th>${header}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      
+      const displayData = dataRecords.data.slice(0, 5);
+      displayData.forEach(row => {
+        html += '<tr>';
+        dataRecords.headers.forEach(header => {
+          html += `<td>${row[header] || ''}</td>`;
+        });
+        html += '</tr>';
+      });
+      
+      if (dataRecords.data.length > 5) {
+        html += `<tr><td colspan="${dataRecords.headers.length}" style="text-align: center; color: #718096;">... 还有 ${dataRecords.data.length - 5} 条数据</td></tr>`;
+      }
+      
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
+    }
+
+    function populateFilenameField() {
+      const select = document.getElementById('filename-field');
+      select.innerHTML = '<option value="">不使用字段作为文件名</option>';
+      dataRecords.headers.forEach(header => {
+        select.innerHTML += `<option value="${header}">${header}</option>`;
+      });
+    }
+
+    async function handleDataSelect(event) {
+      const file = event.target.files[0];
+      if (file) loadData(file);
+    }
+
+    function handleDataDrop(event) {
+      const file = event.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
+        loadData(file);
+      }
+    }
+
+    async function handleZipUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      showStatus('info', '正在解压并导入文件夹...');
+      
+      const formData = new FormData();
+      formData.append('zip', file);
+      
+      try {
+        const response = await fetch('/upload/zip-folders', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            showStatus('success', result.message);
+            showToast(result.message, 'success');
+            await refreshFolderList();
+            updateAutoMatchInfo();
+            updateStepStatus(3, true);
+            document.getElementById('images-badge').textContent = `${result.folders.length} 个文件夹`;
+            document.getElementById('images-badge').className = 'badge';
+            enableCard('card-config');
+          } else {
+            showStatus('error', result.error || '上传失败');
+          }
+        } else {
+          showStatus('error', '上传失败');
+        }
+      } catch (error) {
+        showStatus('error', '上传失败: ' + error.message);
+      }
+    }
+
+    async function handleImageSelect(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      
+      showStatus('info', '正在上传图片...');
+      
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append('images', file);
+      });
+      
+      try {
+        const response = await fetch('/upload/images', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            showStatus('success', `成功上传 ${result.files.length} 张图片`);
+            showToast(`成功上传 ${result.files.length} 张图片`, 'success');
+            await refreshFolderList();
+          }
+        }
+      } catch (error) {
+        showStatus('error', '上传失败: ' + error.message);
+      }
+    }
+
+    async function refreshFolderList() {
+      try {
+        const response = await fetch('/list/folders');
+        const result = await response.json();
+        
+        folderStructure = {};
+        if (result.folders && result.folders.length > 0) {
+          result.folders.forEach(folder => {
+            folderStructure[folder.name] = folder;
+          });
+        }
+        
+        displayFolderList(result.folders || []);
+        updateAutoMatchInfo();
+      } catch (error) {
+        console.error('获取文件夹列表失败:', error);
+      }
+    }
+
+    function displayFolderList(folders) {
+      const container = document.getElementById('folder-list');
+      
+      console.log('所有文件夹:', folders);
+      
+      if (!folders || folders.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹，请上传包含多个文件夹的ZIP文件</div>';
+        return;
+      }
+      
+      container.innerHTML = folders.map(folder => {
+        const matched = isFolderMatched(folder.name);
+        return `
+          <div class="folder-card ${matched ? 'matched' : ''}">
+            <div class="folder-header">
+              <span class="folder-name">📁 ${folder.name}</span>
+              <span class="folder-badge ${matched ? 'matched' : ''}">${folder.fileCount} 张</span>
+            </div>
+            <div class="folder-files">
+              ${folder.files?.slice(0, 5).map(f => `<span class="folder-file">${f.name}</span>`).join('')}
+              ${folder.files?.length > 5 ? `<span class="folder-file">...+${folder.files.length - 5}</span>` : ''}
+            </div>
+            <div class="folder-actions">
+              <button class="btn btn-xs btn-danger" onclick="deleteFolder('${folder.name}')">删除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // 显示文件夹列表的调试信息
+      const debugDiv = document.createElement('div');
+      debugDiv.style.cssText = 'margin-top:20px; padding:10px; background:#f7f7f7; border-radius:8px; font-size:12px;';
+      debugDiv.innerHTML = `
+        <div><strong>文件夹列表调试:</strong></div>
+        <div>文件夹名: ${folders.map(f => f.name).join(', ')}</div>
+        <div>数据记录数: ${dataRecords?.data?.length || 0}</div>
+        <div>数据示例: ${JSON.stringify(dataRecords?.data?.[0] || {})}</div>
+      `;
+      container.appendChild(debugDiv);
+    }
+
+    function isFolderMatched(folderName) {
+      if (!dataRecords || !templateData) return false;
+      
+      const imageFields = templateData.sheets.flatMap(sheet => 
+        sheet.fields.filter(f => f.type === 'image')
+      );
+      
+      return dataRecords.data.some(row => {
+        return imageFields.some(field => {
+          // 灵活匹配
+          let rowValue = undefined;
+          
+          // 1. 先用 dataName
+          if (field.dataName && row[field.dataName] !== undefined) {
+            rowValue = row[field.dataName];
+          }
+          // 2. 再用 name
+          else if (field.name && row[field.name] !== undefined) {
+            rowValue = row[field.name];
+          }
+          // 3. 模糊匹配
+          else {
+            const rowKeys = Object.keys(row);
+            for (const key of rowKeys) {
+              if (key.toLowerCase().includes(field.name.toLowerCase()) || 
+                  key.toLowerCase().includes(field.dataName?.toLowerCase() || '')) {
+                rowValue = row[key];
+                break;
+              }
+            }
+          }
+          
+          return rowValue === folderName;
+        });
+      });
+    }
+
+    async function deleteFolder(folderName) {
+      if (!confirm(`确定要删除文件夹 "${folderName}" 吗？`)) return;
+      
+      try {
+        const response = await fetch(`/delete/folder/${folderName}`, { method: 'DELETE' });
+        if (response.ok) {
+          showToast(`文件夹 "${folderName}" 已删除`, 'success');
+          await refreshFolderList();
+        }
+      } catch (error) {
+        showToast('删除失败', 'error');
+      }
+    }
+
+    async function clearAllImages() {
+      if (!confirm('确定要清空所有图片和文件夹吗？')) return;
+      
+      try {
+        const response = await fetch('/delete/all-images', { method: 'DELETE' });
+        if (response.ok) {
+          folderStructure = {};
+          document.getElementById('folder-list').innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹</div>';
+          showToast('已清空所有图片', 'success');
+        }
+      } catch (error) {
+        showToast('清空失败', 'error');
+      }
+    }
+
+    function updateAutoMatchInfo() {
+      if (!templateData || !dataRecords) {
+        document.getElementById('auto-match-info').classList.add('hidden');
+        return;
+      }
+      
+      const imageFields = templateData.sheets.flatMap(sheet => 
+        sheet.fields.filter(f => f.type === 'image')
+      );
+      
+      const availableFolders = Object.keys(folderStructure);
+      const matched = [];
+      const unmatched = [];
+      
+      dataRecords.data.forEach((row) => {
+        imageFields.forEach(field => {
+          const dataKey = field.dataName || field.name;
+          const folderName = row[dataKey];
+          if (folderName) {
+            if (availableFolders.includes(folderName)) {
+              if (!matched.includes(folderName)) matched.push(folderName);
+            } else {
+              if (!unmatched.includes(folderName)) unmatched.push(folderName);
+            }
+          }
+        });
+      });
+      
+      const contentDiv = document.getElementById('auto-match-content');
+      let html = '';
+      
+      if (matched.length > 0) {
+        html += `✓ 已匹配文件夹：${matched.length} 个<br>`;
+        html += `<div style="font-size: 0.9rem; color: #48bb78; margin-top: 4px;">${matched.join(', ')}</div>`;
+      }
+      
+      if (unmatched.length > 0) {
+        html += `<br>✗ 未匹配文件夹：${unmatched.length} 个<br>`;
+        html += `<div style="font-size: 0.9rem; color: #f6ad55; margin-top: 4px;">${unmatched.join(', ')}</div>`;
+      }
+      
+      html += `<div style="margin-top:8px; font-size:0.85rem;">💡 系统会根据数据中的"${imageFields[0]?.name}"字段自动匹配对应的图片文件夹</div>`;
+      
+      contentDiv.innerHTML = html;
+      document.getElementById('auto-match-info').classList.remove('hidden');
+      
+      if (unmatched.length > 0) {
+        document.getElementById('auto-match-info').className = 'auto-match-hint warning';
+      } else {
+        document.getElementById('auto-match-info').className = 'auto-match-hint';
+      }
+    }
+
+    function updateImageMapping() {
+      if (!templateData || !dataRecords) return;
+      
+      const imageFields = templateData.sheets.flatMap(sheet => 
+        sheet.fields.filter(f => f.type === 'image')
+      );
+      
+      const mappingDiv = document.getElementById('image-mapping-list');
+      
+      if (imageFields.length === 0) {
+        mappingDiv.innerHTML = '<div style="color: #718096; font-size: 0.9rem;">模板中未识别到图片字段</div>';
+        return;
+      }
+      
+      let html = '';
+      imageFields.forEach(field => {
+        html += `
+          <div style="display: flex; align-items: center; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px;">
+            <span style="font-weight: 500; color: #2d3748; min-width: 120px;">${field.name}</span>
+            <span style="color: #718096;">→</span>
+            <span style="color: #805ad5; margin-left: 8px;">数据字段值将作为文件夹名称</span>
+          </div>
+        `;
+      });
+      
+      mappingDiv.innerHTML = html;
+    }
+
+    function enableCard(cardId) {
+      document.getElementById(cardId).classList.remove('disabled');
+    }
+
+    function updateStepStatus(stepNumber, completed) {
+      for (let i = 1; i <= 6; i++) {
+        const step = document.getElementById(`step-${i}`);
+        if (!step) continue;
+        if (i < stepNumber) {
+          step.className = 'step-item completed';
+        } else if (i === stepNumber) {
+          step.className = 'step-item active';
+        } else {
+          step.className = 'step-item disabled';
+        }
+      }
+      
+      if (completed && stepNumber === 3) {
+        updateStepStatus(4, false);
+        enableCard('card-images');
+      }
+      if (completed && stepNumber === 4) {
+        updateStepStatus(5, false);
+        enableCard('card-config');
+      }
+      if (completed && stepNumber === 5) {
+        updateStepStatus(6, false);
+        enableCard('card-generate');
+        document.getElementById('generate-btn').disabled = false;
+      }
+    }
+
+    async function validateCurrentData() {
+      if (!templateData || !dataRecords) {
+        showToast('请先导入模板和数据', 'warning');
+        return;
+      }
+      
+      showStatus('info', '正在验证数据...');
+      
+      const validationData = {
+        data: dataRecords.data,
+        template: { sheets: templateData.sheets.map(sheet => ({ fields: sheet.fields })) }
+      };
+      
+      try {
+        const response = await fetch('/validate/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(validationData)
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          displayValidationResult(result);
+        }
+      } catch (error) {
+        showToast('验证失败', 'error');
+      }
+    }
+
+    function displayValidationResult(result) {
+      const resultDiv = document.getElementById('validation-result');
+      resultDiv.classList.remove('hidden');
+      
+      let html = '<div style="margin-bottom: 12px;">';
+      
+      if (result.summary) {
+        html += `<div class="validation-stat">数据行数: ${result.summary.totalRows}</div>`;
+        html += `<div class="validation-stat">图片字段: ${result.summary.imageFields}</div>`;
+        html += `<div class="validation-stat ${result.summary.matchedFolders?.length > 0 ? '' : 'warning'}">已匹配文件夹: ${result.summary.matchedFolders?.length || 0}</div>`;
+        html += `<div class="validation-stat ${result.summary.unmatchedFolders?.length > 0 ? 'warning' : ''}">未匹配文件夹: ${result.summary.unmatchedFolders?.length || 0}</div>`;
+      }
+      
+      html += '</div>';
+      
+      if (result.issues && result.issues.length > 0) {
+        html += '<div style="margin-top: 16px;">';
+        result.issues.forEach(issue => {
+          html += `<div class="validation-stat ${issue.type === 'error' ? 'error' : 'warning'}">${issue.message}</div>`;
+        });
+        html += '</div>';
+      }
+      
+      resultDiv.innerHTML = html;
+    }
+
+    async function generateExcelFiles() {
+      if (!templateData || !dataRecords) return;
+      
+      console.log('====== generateExcelFiles 调试信息 ======');
+      console.log('👉 dataRecords.data 条数:', dataRecords.data.length);
+      console.log('👉 importedData 条数:', importedData ? importedData.length : 0);
+      console.log('👉 dataRecords.data:', dataRecords.data);
+      
+      const outputPrefix = document.getElementById('output-prefix').value;
+      const filenameField = document.getElementById('filename-field').value;
+      const downloadZip = document.getElementById('download-zip').checked;
+      const separateDownload = document.getElementById('separate-download').checked;
+      const imageWidth = parseInt(document.getElementById('image-width').value);
+      const imageHeight = parseInt(document.getElementById('image-height').value);
+      const imageCol = parseInt(document.getElementById('image-col').value) - 1;
+      const imageRow = parseInt(document.getElementById('image-row').value) - 1;
+      const matchRule = document.getElementById('image-match-rule').value;
+      
+      console.log('👉 下载选项: downloadZip=', downloadZip, 'separateDownload=', separateDownload);
+      
+      showStatus('info', '开始批量生成Excel文件...');
+      document.getElementById('progress-fill').style.width = '0%';
+      
+      const promises = [];
+      const excelFiles = [];
+      
+      dataRecords.data.forEach((record, index) => {
+        const filename = filenameField && record[filenameField] 
+          ? `${outputPrefix}${record[filenameField]}.xlsx` 
+          : `${outputPrefix}${index + 1}.xlsx`;
+        
+        promises.push(generateSingleExcel(record, filename, imageWidth, imageHeight, imageCol, imageRow, matchRule));
+      });
+      
+      try {
+        const results = await Promise.all(promises);
+        console.log('👉 Promise.all 完成，结果个数:', results.length);
+        
+        results.forEach((blob, index) => {
+          const filename = filenameField && dataRecords.data[index][filenameField] 
+            ? `${outputPrefix}${dataRecords.data[index][filenameField]}.xlsx` 
+            : `${outputPrefix}${index + 1}.xlsx`;
+          excelFiles.push({ filename, blob });
+        });
+        
+        console.log('👉 excelFiles 数组:', excelFiles);
+        
+        if (downloadZip && excelFiles.length > 1) {
+          console.log('👉 下载ZIP');
+          downloadAsZip(excelFiles);
+        } else if (separateDownload) {
+          console.log('👉 分别下载');
+          excelFiles.forEach(file => {
+            saveAs(file.blob, file.filename);
+          });
+        } else if (excelFiles.length === 1) {
+          console.log('👉 下载单个文件');
+          saveAs(excelFiles[0].blob, excelFiles[0].filename);
+        } else {
+          console.log('👉 没有下载动作');
+        }
+        
+        showStatus('success', `成功生成 ${excelFiles.length} 个Excel文件`);
+        updateStepStatus(5, true);
+      } catch (error) {
+        showStatus('error', '生成失败: ' + error.message);
+        showToast('生成失败: ' + error.message, 'error');
+      }
+    }
+
+    async function generateSingleExcel(record, filename, imageWidth, imageHeight, col, row, matchRule) {
+      const workbook = new ExcelJS.Workbook();
+      
+      // 读取配置：哪些行是变量名行，需要删除
+      const excludeRowsInput = document.getElementById('exclude-rows').value;
+      const excludeRows = excludeRowsInput
+        .split(',')
+        .map(s => parseInt(s.trim()))
+        .filter(n => !isNaN(n));
+      
+      console.log('生成Excel:', { filename, record, imageWidth, imageHeight, col, row, matchRule });
+      console.log('要删除的行（行号）:', excludeRows);
+      console.log('图片字段:', templateData.sheets[0].fields.filter(f => f.type === 'image'));
+      console.log('文件夹结构:', folderStructure);
+      
+      for (const sheetData of templateData.sheets) {
+        const worksheet = workbook.addWorksheet(sheetData.name);
+        
+        console.log(`==== 处理工作表 ${sheetData.name} ====`);
+        console.log('原始模板数据:', sheetData.data);
+        console.log('识别的字段:', sheetData.fields);
+        console.log('当前记录:', record);
+        
+        // 先找到模板里最大的列数，确保所有列都保留！
+        const maxCol = Math.max(...sheetData.data.map(row => row.length));
+        console.log(`模板最大列数: ${maxCol}`);
+        
+        // 先建立一个映射：变量名 -> 字段（方便后面查找）
+        const variableToField = new Map();
+        for (const field of sheetData.fields) {
+          if (field.dataName) {
+            variableToField.set(field.dataName, field);
+          }
+          if (field.name) {
+            variableToField.set(field.name, field);
+          }
+        }
+        console.log('变量名到字段的映射:', variableToField);
+        
+        // 用于跟踪插入的图片，避免重复插入
+        const insertedImages = new Set();
+        
+        // 新的行索引（因为会跳过某些行）
+        let newRowIndex = 0;
+        
+        for (let i = 0; i < sheetData.data.length; i++) {
+          // 检查这一行是否是要删除的变量名行
+          const isExcluded = excludeRows.includes(i + 1); // 行号从1开始
+          
+          if (isExcluded) {
+            console.log(`跳过第${i+1}行（变量名行）`);
+            continue;
+          }
+          
+          newRowIndex++; // 新的行号
+          
+          for (let j = 0; j < maxCol; j++) { // 循环到最大列数，确保所有列都处理！
+            const cell = worksheet.getCell(newRowIndex, j + 1);
+            const originalValue = (sheetData.data[i] && sheetData.data[i][j]) || ''; // 安全获取值
+            
+            // 检查上一行（i-1）是否是变量名行
+            let field = null;
+            if (i > 0 && excludeRows.includes(i)) {
+              // 当前行的上一行是变量名行！
+              const variableValue = (sheetData.data[i-1] && sheetData.data[i-1][j]) || '';
+              field = variableToField.get(variableValue);
+              console.log(`[原行${i+1} -> 新行${newRowIndex}列${j+1}] 上一行是变量名: ${variableValue}`);
+            }
+            
+            if (field) {
+              console.log(`   处理字段: ${field.name} (dataName=${field.dataName}, type=${field.type})`);
+              // 查找字段值
+              let fieldValue = undefined;
+              
+              // 1. 先用 dataName 精确匹配
+              if (field.dataName && record[field.dataName] !== undefined) {
+                fieldValue = record[field.dataName];
+                console.log(`   ✅ 用 dataName 匹配到: ${fieldValue}`);
+              }
+              // 2. 再用 name 精确匹配
+              else if (field.name && record[field.name] !== undefined) {
+                fieldValue = record[field.name];
+                console.log(`   ✅ 用 name 匹配到: ${fieldValue}`);
+              } else {
+                console.log(`   ❌ 未匹配到值`);
+              }
+              
+              // 如果是图片字段，不填充文本值，留空放图片
+              if (field.type === 'image') {
+                cell.value = '';
+                console.log(`   🖼️ 图片字段，留空`);
+              } else if (field.replaceable && fieldValue !== undefined) {
+                // 重要：只要这一列有对应的字段并且有数据，就直接替换！
+                // 不管原单元格内容是什么，都替换成数据！
+                cell.value = fieldValue;
+                console.log(`   🔄 替换成功: ${originalValue} → ${fieldValue}`);
+              } else {
+                cell.value = originalValue;
+                console.log(`   ➖ 保持原值: ${originalValue}`);
+              }
+            } else {
+              cell.value = originalValue;
+            }
+          }
+        }
+        
+        const imageFields = sheetData.fields.filter(f => f.type === 'image');
+        console.log('处理图片字段:', imageFields);
+        
+        for (const field of imageFields) {
+          // 尝试多种方式匹配字段值
+          let recordValue = undefined;
+          
+          // 1. 先用 dataName 精确匹配
+          if (field.dataName && record[field.dataName] !== undefined) {
+            recordValue = record[field.dataName];
+          }
+          // 2. 再用 name 精确匹配
+          else if (field.name && record[field.name] !== undefined) {
+            recordValue = record[field.name];
+          }
+          
+          console.log('处理图片字段:', field, '最终记录值:', recordValue, '匹配文件夹:', recordValue ? folderStructure[recordValue] : '未找到');
+          
+          if (recordValue && folderStructure[recordValue]) {
+            const folder = folderStructure[recordValue];
+            let imagePath = null;
+            
+            if (folder.files && folder.files.length > 0) {
+              imagePath = folder.files[0].path;
+              console.log('使用图片:', imagePath);
+            }
+            
+            if (imagePath && !insertedImages.has(field.dataName)) {
+              try {
+                console.log('正在加载图片:', imagePath);
+                const response = await fetch(imagePath);
+                
+                if (!response.ok) {
+                  console.error('图片加载失败:', response.status, response.statusText);
+                  continue;
+                }
+                
+                // 检查图片大小，避免处理过大的图片
+                const contentLength = response.headers.get('content-length');
+                if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+                  console.warn('图片太大（超过10MB），跳过:', imagePath);
+                  continue;
+                }
+                
+                const blob = await response.blob();
+                
+                // 使用 FileReader 安全地转换 base64
+                const base64 = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result.split(',')[1]);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+                
+                const ext = imagePath.split('.').pop().toLowerCase();
+                const imageId = workbook.addImage({
+                  base64: base64,
+                  extension: ext
+                });
+                
+                // 找到在原始模板中图片占位符的位置，然后计算在新Excel中的位置
+                let foundOriginalRow = -1;
+                let foundCol = -1;
+                
+                // 先在原始模板中找到占位符的位置
+                for (let i = 0; i < sheetData.data.length; i++) {
+                  for (let j = 0; j < sheetData.data[i].length; j++) {
+                    const originalValue = sheetData.data[i][j];
+                    if (originalValue === field.dataName || originalValue === field.name) {
+                      foundOriginalRow = i; // 原始行索引
+                      foundCol = j;
+                      console.log(`在原始模板中找到图片占位符 [原行${i+1}列${j+1}]: ${originalValue}`);
+                      break;
+                    }
+                  }
+                  if (foundOriginalRow >= 0) break;
+                }
+                
+                if (foundOriginalRow >= 0) {
+                  // 计算在新Excel中的行位置（跳过要删除的行）
+                  let finalRow = 0;
+                  for (let i = 0; i <= foundOriginalRow; i++) {
+                    if (!excludeRows.includes(i + 1)) {
+                      finalRow++;
+                    }
+                  }
+                  
+                  console.log(`图片插入到新位置 [行${finalRow}列${foundCol+1}]`);
+                  
+                  worksheet.addImage(imageId, {
+                    tl: { col: foundCol, row: finalRow - 1 }, // ExcelJS中从0开始
+                    ext: { width: imageWidth, height: imageHeight }
+                  });
+                  
+                  console.log('图片插入成功');
+                  insertedImages.add(field.dataName);
+                }
+              } catch (e) {
+                console.error('添加图片失败:', e);
+              }
+            }
+          } else {
+            console.warn(`未找到文件夹匹配: 字段=${field.name}/${field.dataName}, 值=${recordValue}`);
+          }
+        }
+      }
+      
+      return workbook.xlsx.writeBuffer().then(buffer => new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    }
+
+    async function previewFirstRecord() {
+      if (!templateData || !templateData.sheets || templateData.sheets.length === 0) {
+        showToast('请先导入模板', 'warning');
+        return;
+      }
+      if (!importedData || importedData.length === 0) {
+        showToast('请先导入数据', 'warning');
+        return;
+      }
+      
+      // 读取配置：哪些行是变量名行，需要删除
+      const excludeRowsInput = document.getElementById('exclude-rows').value;
+      const excludeRows = excludeRowsInput
+        .split(',')
+        .map(s => parseInt(s.trim()))
+        .filter(n => !isNaN(n));
+      
+      const record = importedData[0];
+      const sheetData = templateData.sheets[0];
+      
+      console.log('====== 详细调试信息 ======');
+      console.log('👉 数据条数:', importedData.length);
+      console.log('👉 所有数据:', importedData);
+      console.log('👉 模板完整data:', sheetData.data);
+      console.log('👉 模板字段:', sheetData.fields);
+      console.log('👉 第一条数据:', record);
+      console.log('👉 要删除的行（行号）:', excludeRows);
+      
+      // 先建立一个映射：变量名 -> 字段（方便后面查找）
+      const variableToField = new Map();
+      for (const field of sheetData.fields) {
+        if (field.dataName) {
+          variableToField.set(field.dataName, field);
+        }
+        if (field.name) {
+          variableToField.set(field.name, field);
+        }
+      }
+      console.log('变量名到字段的映射:', variableToField);
+      
+      const previewArea = document.getElementById('preview-area');
+      const previewContent = document.getElementById('preview-content');
+      previewArea.classList.remove('hidden');
+      
+      let html = '';
+      
+      html += `<div style="margin-bottom: 20px; padding: 12px; background: white; border: 1px solid #cbd5e0; border-radius: 6px;">
+        <h5 style="margin-bottom: 10px; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">📊 ${sheetData.name}</h5>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">`;
+      
+      // 先找到最大列数
+      const maxCol = Math.max(...sheetData.data.map(row => row.length));
+      
+      for (let i = 0; i < sheetData.data.length; i++) {
+        // 检查这一行是否是要删除的变量名行
+        const isExcluded = excludeRows.includes(i + 1); // 行号从1开始
+        
+        if (isExcluded) {
+          console.log(`跳过第${i+1}行（变量名行）`);
+          continue;
+        }
+        
+        html += '<tr>';
+        for (let j = 0; j < maxCol; j++) {
+          const originalValue = (sheetData.data[i] && sheetData.data[i][j]) || '';
+          // 检查上一行（i-1）是否是变量名行
+          let field = null;
+          if (i > 0 && excludeRows.includes(i)) {
+            // 当前行的上一行是变量名行！
+            const variableValue = (sheetData.data[i-1] && sheetData.data[i-1][j]) || '';
+            field = variableToField.get(variableValue);
+            console.log(`[行${i+1}列${j+1}] 上一行是变量名: ${variableValue}`);
+          }
+          
+          let cellValue = originalValue;
+          let isHighlight = false;
+          let isImage = false;
+          
+          if (field) {
+            let fieldValue = undefined;
+            let matchedKey = '';
+            
+            // 1. 先用 dataName 精确匹配
+            if (field.dataName && record[field.dataName] !== undefined) {
+              fieldValue = record[field.dataName];
+              matchedKey = field.dataName;
+            } 
+            // 2. 再用 name 精确匹配
+            else if (field.name && record[field.name] !== undefined) {
+              fieldValue = record[field.name];
+              matchedKey = field.name;
+            }
+            
+            if (field.type === 'image') {
+                isImage = true;
+                cellValue = '[图片占位]';
+              } else if (field.replaceable && fieldValue !== undefined) {
+                // 重要：只要这一列有对应的字段并且有数据，就直接替换！
+                cellValue = fieldValue;
+                isHighlight = true;
+                console.log(`[行${i+1}列${j+1}] 原值=${originalValue} → 替换为=${fieldValue}`);
+              }
+          }
+          
+          let bgColor = isHighlight ? '#ebf8ff' : (isImage ? '#fff5f5' : 'white');
+          let border = '1px solid #cbd5e0';
+          html += `<td style="padding: 6px; border: ${border}; background: ${bgColor}; min-width: 80px;">${cellValue}</td>`;
+        }
+        html += '</tr>';
+      }
+      
+      html += `</table>
+        <div style="margin-top: 8px; font-size: 0.8rem; color: #718096;">
+          <span style="margin-right: 12px;">🟦 蓝色背景 = 已替换字段</span>
+          <span>🟥 红色背景 = 图片占位</span>
+          <span style="margin-left: 12px;">⚠️ 已删除行号：${excludeRows.join(',')}</span>
+        </div>
+      </div>`;
+      
+      previewContent.innerHTML = html;
+      showToast('预览已生成（查看控制台调试信息）', 'success');
+    }
+
+    async function downloadAsZip(files) {
+      const zip = new JSZip();
+      
+      // 添加所有Excel文件到ZIP
+      for (const file of files) {
+        zip.file(file.filename, file.blob);
+      }
+      
+      // 生成ZIP并下载
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      saveAs(zipBlob, '批量生成的Excel文件.zip');
+    }
+
+    function saveCurrentTemplate() {
+      if (!templateData) {
+        showToast('请先导入模板', 'warning');
+        return;
+      }
+      
+      const templateName = prompt('请输入模板名称:', '模板_' + new Date().toISOString().split('T')[0]);
+      if (!templateName) return;
+      
+      const saveData = {
+        name: templateName,
+        sheets: templateData.sheets
+      };
+      
+      fetch('/save/template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveData)
+      }).then(response => response.json()).then(result => {
+        if (result.success) {
+          showToast('模板保存成功', 'success');
+        } else {
+          showToast('保存失败: ' + (result.error || '未知错误'), 'error');
+        }
+      }).catch(error => {
+        showToast('保存失败: ' + error.message, 'error');
+      });
+    }
+
+    function showTemplateManager() {
+      fetch('/list/templates').then(response => response.json()).then(result => {
+        const listDiv = document.getElementById('template-list');
+        
+        if (!result.templates || result.templates.length === 0) {
+          listDiv.innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无保存的模板</div>';
+        } else {
+          listDiv.innerHTML = result.templates.map(template => `
+            <div class="template-item">
+              <span class="template-icon">📋</span>
+              <div class="template-info">
+                <div class="template-name">${template.name}</div>
+                <div class="template-meta">${template.sheets} 个工作表 | ${new Date(template.savedAt).toLocaleString()}</div>
+              </div>
+              <div class="template-actions">
+                <button class="btn btn-xs btn-primary" onclick="loadTemplate('${template.filename}')">加载</button>
+                <button class="btn btn-xs btn-danger" onclick="deleteTemplate('${template.filename}')">删除</button>
+              </div>
+            </div>
+          `).join('');
+        }
+        
+        document.getElementById('template-modal').style.display = 'flex';
+        document.getElementById('template-modal').classList.remove('hidden');
+      });
+    }
+
+    function closeTemplateModal() {
+      document.getElementById('template-modal').style.display = 'none';
+      document.getElementById('template-modal').classList.add('hidden');
+    }
+
+    function loadTemplate(name) {
+      fetch(`/load/template/${name}`).then(response => response.json()).then(result => {
+        if (result.success) {
+          // 优先使用 result.data，没有的话用 result.template
+          templateData = result.data || result.template;
+          finalTemplateData = JSON.parse(JSON.stringify(templateData)); // 同时更新finalTemplateData
+          displayFinalTemplatePreview();
+          closeTemplateModal();
+          updateStepStatus(2, true);
+          document.getElementById('template-import-badge').textContent = '已导入';
+          document.getElementById('template-import-badge').className = 'badge';
+          showToast('模板加载成功', 'success');
+        } else {
+          showToast('加载失败', 'error');
+        }
+      });
+    }
+
+    function deleteTemplate(name) {
+      if (!confirm(`确定要删除模板 "${name}" 吗？`)) return;
+      
+      fetch(`/delete/template/${name}`, { method: 'DELETE' }).then(response => response.json()).then(result => {
+        if (result.success) {
+          showToast('模板已删除', 'success');
+          showTemplateManager();
+        } else {
+          showToast('删除失败', 'error');
+        }
+      });
+    }
+
+    function downloadTemplate() {
+      const sampleTemplate = {
+        sheets: [{
+          name: 'Sheet1',
+          data: [
+            ['公司名称', '成立日期', '注册资本', 'Logo'],
+            ['示例公司', '2024-01-01', '1000万', '']
+          ],
+          fields: [
+            { name: '公司名称', column: 0, type: 'text', replaceable: true, defaultValue: '' },
+            { name: '成立日期', column: 1, type: 'date', replaceable: true, defaultValue: '' },
+            { name: '注册资本', column: 2, type: 'text', replaceable: true, defaultValue: '' },
+            { name: 'Logo', column: 3, type: 'image', replaceable: true, defaultValue: '' }
+          ]
+        }]
+      };
+      
+      const blob = new Blob([JSON.stringify(sampleTemplate, null, 2)], { type: 'application/json' });
+      saveAs(blob, '示例模板.json');
+    }
+
+    function downloadSampleData() {
+      const csvContent = '公司名称,成立日期,注册资本,Logo\n' +
+                        '科技公司A,2018-01-15,500万,科技公司A\n' +
+                        '贸易公司B,2019-06-20,800万,贸易公司B\n' +
+                        '制造企业C,2017-12-10,2000万,制造企业C\n' +
+                        '互联网公司D,2020-03-08,1500万,互联网公司D\n' +
+                        '教育培训E,2016-09-01,300万,教育培训E';
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, '示例数据.csv');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const port = urlParams.get('port');
+      if (port) {
+        serverPort = parseInt(port);
+        document.getElementById('server-port').value = serverPort;
+      }
+      
+      const modal = document.getElementById('template-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+      }
+      
+      const fieldModal = document.getElementById('field-edit-modal');
+      if (fieldModal) {
+        fieldModal.style.display = 'none';
+        fieldModal.classList.add('hidden');
+      }
+      
+      const serverIsRunning = await checkServerStatus();
+      if (serverIsRunning) {
+        await refreshFolderList();
+        showStatus('info', '请先导入示例表格以生成模板');
+      } else {
+        showStatus('info', '请点击上方"启动服务器"按钮启动本地服务');
+      }
+    });
+  </script>
+</body>
+</html>
+      
