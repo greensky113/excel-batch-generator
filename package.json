@@ -1,12 +1,28 @@
 {
   "name": "excel-batch-generator-v2",
-  "version": "2.0.0",
+  "version": "1.1.0",
   "description": "Excel批量生成工具v2 - 支持模板自动生成、图片插入和ZIP打包",
   "main": "server.js",
+  "bin": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "backup": "node server-stable.js"
+    "backup": "node server-stable.js",
+    "build": "pkg . --out-path dist",
+    "build:win": "pkg . --targets node18-win-x64 --out-path dist",
+    "build:mac": "pkg . --targets node18-macos-x64 --out-path dist",
+    "build:linux": "pkg . --targets node18-linux-x64 --out-path dist"
+  },
+  "pkg": {
+    "assets": [
+      "index.html"
+    ],
+    "targets": [
+      "node18-win-x64",
+      "node18-macos-x64",
+      "node18-linux-x64"
+    ],
+    "outputPath": "dist"
   },
   "keywords": [
     "excel",
@@ -15,7 +31,7 @@
     "图片插入",
     "ZIP打包"
   ],
-  "author": "",
+  "author": "CMCC-LIGE-13988819329",
   "license": "MIT",
   "dependencies": {
     "archiver": "^6.0.1",
@@ -24,5 +40,8 @@
     "jszip": "^3.10.1",
     "multer": "^1.4.5-lts.1",
     "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
   }
 }
