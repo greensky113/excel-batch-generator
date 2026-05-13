@@ -408,6 +408,11 @@
       </div>
       <input type="file" id="final-template-file" accept=".xlsx,.xls" class="hidden" onchange="handleFinalTemplateSelect(event)">
       
+      <div style="margin-top: 12px; text-align: center;">
+        <button class="btn btn-secondary btn-sm" onclick="showTemplateManager()">📂 管理模板</button>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 8px;">或点击此按钮加载已保存的模板</p>
+      </div>
+      
       <div id="final-template-preview" class="hidden" style="margin-top: 16px;">
         <div class="sheet-tabs" id="final-sheet-tabs"></div>
         <div id="final-sheet-content"></div>
