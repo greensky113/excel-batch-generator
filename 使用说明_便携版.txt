@@ -1,0 +1,65 @@
+
+========================================
+   Excel批量生成工具 V1.1 - 使用说明
+========================================
+
+【快速开始】
+
+1. 安装 Node.js
+   - 访问：https://nodejs.org/
+   - 下载并安装 LTS 版本（推荐 18.x 或 20.x）
+   - 安装完成后重启电脑
+
+2. 启动工具
+   - Windows：双击"启动.bat"
+   - macOS/Linux：在终端运行 "chmod +x 启动.sh && ./启动.sh"
+
+3. 访问网页
+   - 等待服务器启动
+   - 打开浏览器，访问：http://localhost:3000
+
+【文件说明】
+
+index.html              - 前端页面
+server.js               - 后端服务器
+package.json            - 项目配置
+package-lock.json       - 依赖锁定文件
+启动.bat                - Windows 启动脚本
+启动.sh                 - macOS/Linux 启动脚本
+README.md               - 详细使用文档
+
+【首次运行】
+
+1. 双击"启动.bat"（Windows）
+2. 脚本会自动运行 npm install 安装依赖（首次运行）
+3. 依赖安装完成后，服务器自动启动
+4. 在浏览器访问 http://localhost:3000
+
+【常见问题】
+
+Q: 提示"未找到 Node.js"？
+A: 请先安装 Node.js，访问 https://nodejs.org/
+
+Q: npm install 很慢？
+A: 可以使用淘宝镜像：
+   npm config set registry https://registry.npmmirror.com
+
+Q: 端口 3000 被占用？
+A: 在 server.js 中修改端口号，或者关闭占用端口的程序
+
+Q: 如何停止服务器？
+A: 在命令行窗口按 Ctrl+C
+
+Q: 图片上传在哪里？
+A: 会自动保存在项目目录的 uploads 文件夹中
+
+【技术支持】
+
+版本：V1.1
+开发作者：CMCC-LIGE-13988819329
+更新时间：2026-05-13
+
+========================================
+           祝您使用愉快！
+========================================
+
