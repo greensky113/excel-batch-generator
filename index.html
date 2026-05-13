@@ -534,6 +534,11 @@
           </div>
           
           <div class="config-section">
+            <label class="config-label">输出文件名后缀</label>
+            <input type="text" class="config-input" id="output-suffix" placeholder="例如：_报表" value="">
+          </div>
+          
+          <div class="config-section">
             <label class="config-label">文件名使用的字段（从数据中选择）</label>
             <select class="config-input" id="filename-field"><option value="">请先上传数据文件</option></select>
           </div>
@@ -2589,6 +2594,7 @@
       console.log('👉 dataRecords.data:', dataRecords.data);
       
       const outputPrefix = document.getElementById('output-prefix').value;
+      const outputSuffix = document.getElementById('output-suffix').value;
       const filenameField = document.getElementById('filename-field').value;
       const downloadZip = document.getElementById('download-zip').checked;
       const separateDownload = document.getElementById('separate-download').checked;
@@ -2608,8 +2614,8 @@
       
       dataRecords.data.forEach((record, index) => {
         const filename = filenameField && record[filenameField] 
-          ? `${outputPrefix}${record[filenameField]}.xlsx` 
-          : `${outputPrefix}${index + 1}.xlsx`;
+          ? `${outputPrefix}${record[filenameField]}${outputSuffix}.xlsx` 
+          : `${outputPrefix}${index + 1}${outputSuffix}.xlsx`;
         
         promises.push(generateSingleExcel(record, filename, imageWidth, imageHeight, imageCol, imageRow, matchRule));
       });
@@ -2620,8 +2626,8 @@
         
         results.forEach((blob, index) => {
           const filename = filenameField && dataRecords.data[index][filenameField] 
-            ? `${outputPrefix}${dataRecords.data[index][filenameField]}.xlsx` 
-            : `${outputPrefix}${index + 1}.xlsx`;
+            ? `${outputPrefix}${dataRecords.data[index][filenameField]}${outputSuffix}.xlsx` 
+            : `${outputPrefix}${index + 1}${outputSuffix}.xlsx`;
           excelFiles.push({ filename, blob });
         });
         
