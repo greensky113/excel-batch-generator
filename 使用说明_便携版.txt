@@ -11,7 +11,8 @@
    - 安装完成后重启电脑
 
 2. 启动工具
-   - Windows：双击"启动.bat"
+   - Windows：双击"启动_最简单.bat"（推荐，兼容性最好）
+   - 如果乱码，试试"启动_简化版.bat"或"启动.bat"
    - macOS/Linux：在终端运行 "chmod +x 启动.sh && ./启动.sh"
 
 3. 访问网页
@@ -24,8 +25,11 @@ index.html              - 前端页面
 server.js               - 后端服务器
 package.json            - 项目配置
 package-lock.json       - 依赖锁定文件
-启动.bat                - Windows 启动脚本
+启动_最简单.bat         - Windows 启动脚本（推荐，兼容性最好）
+启动_简化版.bat         - Windows 启动脚本（简化版）
+启动.bat                - Windows 启动脚本（完整版）
 启动.sh                 - macOS/Linux 启动脚本
+乱码问题解决.txt        - 乱码问题解决方案
 README.md               - 详细使用文档
 
 【首次运行】
@@ -36,6 +40,10 @@ README.md               - 详细使用文档
 4. 在浏览器访问 http://localhost:3000
 
 【常见问题】
+
+Q: 提示乱码或"不是内部或外部命令"？
+A: 请使用"启动_最简单.bat"，这个脚本兼容性最好
+   如果还是不行，查看"乱码问题解决.txt"
 
 Q: 提示"未找到 Node.js"？
 A: 请先安装 Node.js，访问 https://nodejs.org/

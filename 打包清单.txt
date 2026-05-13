@@ -9,8 +9,11 @@ index.html                      - 前端页面（必须）
 server.js                       - 后端服务器（必须）
 package.json                    - 项目配置（必须）
 package-lock.json               - 依赖锁定文件（必须）
-启动.bat                        - Windows 启动脚本（必须）
+启动_最简单.bat                 - Windows 启动脚本（推荐，兼容性最好）
+启动_简化版.bat                 - Windows 启动脚本（可选，简化版）
+启动.bat                        - Windows 启动脚本（可选，完整版）
 启动.sh                         - macOS/Linux 启动脚本（可选）
+乱码问题解决.txt                - 乱码问题解决方案（推荐）
 使用说明_便携版.txt             - 使用说明（推荐）
 README.md                       - 详细文档（可选）
 
@@ -31,9 +34,12 @@ templates/                      - 运行时自动创建
    - server.js
    - package.json
    - package-lock.json
-   - 启动.bat
-   - 启动.sh
-   - 使用说明_便携版.txt
+   - 启动_最简单.bat（推荐）
+   - 启动_简化版.bat（可选）
+   - 启动.bat（可选）
+   - 启动.sh（可选）
+   - 乱码问题解决.txt（推荐）
+   - 使用说明_便携版.txt（推荐）
    - README.md（可选）
 
 3. 将文件夹压缩成 ZIP 包
@@ -46,7 +52,8 @@ templates/                      - 运行时自动创建
    - 访问 https://nodejs.org/
    - 下载并安装 LTS 版本
 
-3. 双击"启动.bat"
+3. 双击"启动_最简单.bat"（推荐）
+   - 如果乱码，查看"乱码问题解决.txt"
 
 4. 等待服务器启动
 
@@ -59,8 +66,11 @@ Excel批量生成工具_V1.1/
 ├── server.js
 ├── package.json
 ├── package-lock.json
+├── 启动_最简单.bat
+├── 启动_简化版.bat
 ├── 启动.bat
 ├── 启动.sh
+├── 乱码问题解决.txt
 ├── 使用说明_便携版.txt
 └── README.md
 
