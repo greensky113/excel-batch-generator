@@ -4,9 +4,9 @@
   "description": "Excel批量生成工具v2 - 支持模板自动生成、图片插入和ZIP打包",
   "main": "server.js",
   "scripts": {
-    "start": "node server-stable.js",
-    "dev": "node server-stable.js",
-    "backup": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "backup": "node server-stable.js"
   },
   "keywords": [
     "excel",
