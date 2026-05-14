@@ -2294,8 +2294,10 @@
 
     async function refreshFolderList() {
       try {
+        console.log('正在刷新文件夹列表...');
         const response = await fetch('/list/folders');
         const result = await response.json();
+        console.log('服务器返回的文件夹数据:', result);
         
         folderStructure = {};
         if (result.folders && result.folders.length > 0) {
@@ -2315,6 +2317,18 @@
       const container = document.getElementById('folder-list');
       
       console.log('所有文件夹:', folders);
+      
+      // 更新右上角的文件夹数量 badge
+      const imagesBadge = document.getElementById('images-badge');
+      if (imagesBadge) {
+        if (!folders || folders.length === 0) {
+          imagesBadge.textContent = '';
+          imagesBadge.className = 'badge hidden';
+        } else {
+          imagesBadge.textContent = `${folders.length} 个文件夹`;
+          imagesBadge.className = 'badge';
+        }
+      }
       
       if (!folders || folders.length === 0) {
         container.innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹，请上传包含多个文件夹的ZIP文件</div>';
@@ -2407,13 +2421,17 @@
       if (!confirm('确定要清空所有文件夹吗？')) return;
       
       try {
+        console.log('正在清空所有文件夹...');
         const response = await fetch('/clear/folders', { method: 'POST' });
+        console.log('清空响应:', response);
         if (response.ok) {
           const result = await response.json();
+          console.log('清空结果:', result);
           await refreshFolderList();
           showToast(result.message || '已清空所有文件夹', 'success');
         }
       } catch (error) {
+        console.error('清空失败:', error);
         showToast('清空失败', 'error');
       }
     }
