@@ -2409,9 +2409,9 @@
       try {
         const response = await fetch('/clear/folders', { method: 'POST' });
         if (response.ok) {
-          folderStructure = {};
-          document.getElementById('folder-list').innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹</div>';
-          showToast('已清空所有文件夹', 'success');
+          const result = await response.json();
+          await refreshFolderList();
+          showToast(result.message || '已清空所有文件夹', 'success');
         }
       } catch (error) {
         showToast('清空失败', 'error');
@@ -2424,9 +2424,9 @@
       try {
         const response = await fetch('/clear/images', { method: 'POST' });
         if (response.ok) {
-          folderStructure = {};
-          document.getElementById('folder-list').innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹</div>';
-          showToast('已清空所有图片和文件夹', 'success');
+          const result = await response.json();
+          await refreshFolderList();
+          showToast(result.message || '已清空所有图片和文件夹', 'success');
         }
       } catch (error) {
         showToast('清空失败', 'error');
