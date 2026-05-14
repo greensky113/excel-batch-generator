@@ -517,6 +517,7 @@
       
       <div style="margin-top: 12px; display: flex; gap: 10px;">
         <button class="btn btn-sm btn-warning" onclick="refreshFolderList()">🔄 刷新文件夹列表</button>
+        <button class="btn btn-sm btn-danger" onclick="clearAllFolders()">🗑️ 清空所有文件夹</button>
         <button class="btn btn-sm btn-danger" onclick="clearAllImages()">🗑️ 清空所有图片</button>
       </div>
     </div>
@@ -2402,15 +2403,30 @@
       }
     }
 
+    async function clearAllFolders() {
+      if (!confirm('确定要清空所有文件夹吗？')) return;
+      
+      try {
+        const response = await fetch('/clear/folders', { method: 'POST' });
+        if (response.ok) {
+          folderStructure = {};
+          document.getElementById('folder-list').innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹</div>';
+          showToast('已清空所有文件夹', 'success');
+        }
+      } catch (error) {
+        showToast('清空失败', 'error');
+      }
+    }
+
     async function clearAllImages() {
       if (!confirm('确定要清空所有图片和文件夹吗？')) return;
       
       try {
-        const response = await fetch('/delete/all-images', { method: 'DELETE' });
+        const response = await fetch('/clear/images', { method: 'POST' });
         if (response.ok) {
           folderStructure = {};
           document.getElementById('folder-list').innerHTML = '<div style="text-align:center; color:#718096; padding:40px;">暂无文件夹</div>';
-          showToast('已清空所有图片', 'success');
+          showToast('已清空所有图片和文件夹', 'success');
         }
       } catch (error) {
         showToast('清空失败', 'error');

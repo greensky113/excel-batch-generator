@@ -851,6 +851,25 @@ app.post('/clear/images', (req, res) => {
   }
 });
 
+app.post('/clear/folders', (req, res) => {
+  try {
+    const uploadDir = path.join(__dirname, 'uploads');
+    let deletedCount = 0;
+    if (fs.existsSync(uploadDir)) {
+      fs.readdirSync(uploadDir).forEach(file => {
+        const filePath = path.join(uploadDir, file);
+        if (fs.statSync(filePath).isDirectory()) {
+          fs.rmSync(filePath, { recursive: true, force: true });
+          deletedCount++;
+        }
+      });
+    }
+    res.json({ success: true, message: `已删除 ${deletedCount} 个文件夹` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/download/zip', express.json({ limit: '50mb' }), async (req, res) => {
   try {
     const { filenames } = req.body;
